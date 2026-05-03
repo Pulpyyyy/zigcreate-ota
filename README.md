@@ -9,7 +9,7 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 | Fonction      | Description                                               |
 |---------------|-----------------------------------------------------------|
 | Ventilateur   | Marche/arrêt et 6 niveaux de vitesse                      |
-| Lumière       | Luminosité réglable et température de couleur (Froid/Neutre/Chaud) |
+| Lumière       | Allumage/extinction et température de couleur (Froid/Neutre/Chaud) |
 | Minuteur      | Extinction automatique à 60, 120 ou 240 minutes           |
 | Son           | Activation / désactivation du bip de confirmation         |
 | Direction     | Mode Été (brassage vers le bas) ou Hiver (remontée d'air chaud) |
