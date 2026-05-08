@@ -75,7 +75,7 @@ const fz_timer = {
         if (msg.endpoint.ID !== 3) return;
         if (msg.data.hasOwnProperty('currentLevel')) {
             const lvl = msg.data['currentLevel'];
-            const minutes = lvl === 0 ? 0 : Math.round((lvl * 240) / 254);
+            const minutes = lvl;  // ZCL level = minutes directly (firmware v2)
             return {timer_countdown: minutes};
         }
     },
@@ -84,7 +84,7 @@ const tz_timer = {
     key: ['timer_preset'],
     convertSet: async (entity, key, value, meta) => {
         // hours label → ZCL level
-        const levelMap = {'1h': 64, '2h': 127, '4h': 254};
+        const levelMap = {'1h': 60, '2h': 120, '4h': 240};
         const level = levelMap[String(value)] ?? 0;
         const ep3 = meta.device.getEndpoint(3);
         await ep3.command('genLevelCtrl', 'moveToLevel', {level, transtime: 0});

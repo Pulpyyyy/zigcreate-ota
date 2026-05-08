@@ -62,6 +62,7 @@ Dans la section **Flash Address**, renseignez les trois fichiers avec leurs adre
 |---|---|
 | `bootloader.bin` | `0x0` |
 | `partition-table.bin` | `0x8000` |
+| `ota_data_initial.bin` | `0x10000` |
 | `zigcreate.bin` | `0x30000` |
 
 Pour ajouter un fichier supplémentaire, cliquez sur **Add File**.
