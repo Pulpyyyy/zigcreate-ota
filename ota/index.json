@@ -12,5 +12,12 @@
     "fileVersion": 1779221792,
     "fileSize": 523038,
     "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260519-201632/zigcreate.ota"
+  },
+  {
+    "manufacturerCode": 20630,
+    "imageType": 63848,
+    "fileVersion": 1779221791,
+    "fileSize": 523118,
+    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260519-201631-debug/zigcreate.ota"
   }
 ]
