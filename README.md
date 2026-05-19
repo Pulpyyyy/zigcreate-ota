@@ -6,22 +6,80 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 
 ## Ce que vous pouvez contrôler
 
-| Fonction      | Description                                               |
-|---------------|-----------------------------------------------------------|
-| Ventilateur   | Marche/arrêt et 6 niveaux de vitesse                      |
-| Lumière       | Allumage/extinction et température de couleur (Froid/Neutre/Chaud) |
-| Minuteur      | Extinction automatique à 60, 120 ou 240 minutes           |
-| Son           | Activation / désactivation du bip de confirmation         |
-| Direction     | Mode Été (brassage vers le bas) ou Hiver (remontée d'air chaud) |
+| Entité | Contrôles disponibles |
+|---|---|
+| **Ventilateur** | Marche/arrêt · 6 niveaux de vitesse |
+| **Lumière** | Marche/arrêt · Luminosité continue · Température de couleur (Froid / Neutre / Chaud) |
+| **Minuterie** | Préréglages 1 h / 2 h / 4 h · Décompte en cours visible en temps réel |
+| **Son** | Activation / désactivation du bip de confirmation |
+| **Direction** | Mode Été (brassage vers le bas) · Mode Hiver (remontée d'air chaud) |
+| **Comportement après coupure** | État de la lumière et du son configurables (éteint / allumé / bascule / restauration) |
 
 ---
 
 ## Fonctionnalités
 
-- **Contrôle depuis l'appli** — Toutes les commandes sont disponibles depuis votre interface domotique.
-- **Synchronisation en temps réel** — Utiliser la télécommande physique met à jour l'état dans l'appli instantanément.
-- **Mises à jour sans fil** — Le firmware se met à jour par liaison radio (OTA), sans démontage ni câble.
-- **Réinitialisation facile** — Un appui long de 5 secondes sur le bouton BOOT remet l'appareil en configuration d'usine.
+### Contrôle complet depuis l'interface domotique
+
+Toutes les commandes sont disponibles depuis Zigbee2MQTT ou toute box compatible Zigbee :
+
+- **Ventilateur** — marche/arrêt indépendant de la vitesse ; la vitesse peut être réglée de 1 à 6 sans éteindre le ventilateur. Régler la vitesse à 0 éteint le ventilateur.
+- **Lumière** — marche/arrêt avec mémorisation de l'état ; luminosité réglable en continu (0–100 %) ; température de couleur en 3 paliers : Froid (~6 500 K), Neutre (~2 700 K), Chaud (~2 000 K).
+- **Minuterie** — déclenche l'extinction automatique après 1 h, 2 h ou 4 h. Le décompte restant (en minutes) est remontée en temps réel dans l'interface.
+- **Son (bip)** — active ou désactive le bip sonore émis par l'appareil lors de chaque commande.
+- **Direction** — inverse le sens de rotation du ventilateur pour le mode Hiver.
+
+### Synchronisation en temps réel
+
+Utiliser la télécommande physique (vitesse, on/off, direction…) met à jour l'état dans l'interface domotique instantanément, sans attendre le prochain poll. L'état est également resynchronisé automatiquement à chaque redémarrage du module.
+
+### Comportement au démarrage configurable (StartUpOnOff)
+
+L'attribut ZCL `StartUpOnOff` est supporté pour la lumière et le son, ce qui permet de définir via l'interface l'état souhaité après une coupure de courant :
+
+| Valeur | Comportement |
+|---|---|
+| `off` | Toujours éteint au démarrage |
+| `on` | Toujours allumé au démarrage |
+| `toggle` | Inverse l'état précédent |
+| `previous` (défaut lumière) | Restaure l'état avant la coupure |
+
+La température de couleur est également restaurée automatiquement à la valeur avant coupure. Par défaut, le bip démarre toujours désactivé.
+
+### Mises à jour sans fil (OTA)
+
+Le firmware se met à jour par liaison radio depuis Zigbee2MQTT, sans démontage ni câble. Les mises à jour sont proposées automatiquement dès qu'une nouvelle version est disponible dans l'index OTA de ce dépôt.
+
+### Rôle routeur Zigbee
+
+Le module fonctionne en tant que **routeur Zigbee** : il peut relayer les communications d'autres appareils Zigbee du réseau, contribuant ainsi à améliorer la portée et la robustesse du maillage.
+
+### Indicateur LED
+
+La LED RGB intégrée indique l'état du module en temps réel :
+
+| Couleur / comportement | Signification |
+|---|---|
+| Orange (ramping) | Démarrage en cours |
+| Cyan clignotant (0,5 s) | Recherche d'un réseau Zigbee (appairage) |
+| 3 flashes verts | Appairage réussi |
+| Rouge clignotant rapide | Échec de connexion, nouvelle tentative |
+| Ambre (1 s on / 2 s off) | Mode dégradé — MCU injoignable |
+| Orange clignotant | Réinitialisation en attente (bouton maintenu) |
+| Éteinte | Fonctionnement normal |
+
+### Réinitialisation
+
+- **Bouton BOOT (5 s)** — maintenir le bouton BOOT appuyé 5 secondes remet l'appareil en configuration d'usine : effacement du réseau Zigbee mémorisé, des préférences et de l'historique de diagnostics. L'appareil redémarre ensuite en mode appairage.
+- **GPIO externe** — un signal sur GPIO14 provoque un redémarrage simple (sans effacement).
+
+### Auto-recovery Zigbee
+
+Si la stack Zigbee échoue à démarrer 3 fois consécutives (détection de boucle de crash), le module efface automatiquement le stockage Zigbee corrompu et redémarre proprement.
+
+### Mode dégradé MCU
+
+Si le MCU Tuya ne répond plus pendant 15 secondes, le module passe en mode dégradé : les commandes entrantes sont ignorées et la LED passe en ambre. Si le MCU répond à nouveau dans les 60 secondes suivantes, le module reprend son fonctionnement normal automatiquement.
 
 ---
 

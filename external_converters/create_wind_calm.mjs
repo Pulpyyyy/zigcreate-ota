@@ -103,7 +103,7 @@ export default {
         // EP1 — ventilateur on/off
         m.onOff({endpointNames: ['fan'], powerOnBehavior: false}),
         // EP2 — lumière: on/off uniquement (brightness masqué, colorTemp géré par converter custom)
-        m.onOff({endpointNames: ['light'], powerOnBehavior: false}),
+        m.onOff({endpointNames: ['light']}),
         // EP4 — bip sonore
         m.onOff({endpointNames: ['beep']}),
         // EP5 — sens de rotation
