@@ -83,6 +83,14 @@ Si le MCU Tuya ne répond plus pendant 15 secondes, le module passe en mode dég
 
 ---
 
+## Câblage
+
+Consultez le guide de câblage pour connaître les GPIOs à connecter selon votre carte :
+
+- [Pinout Waveshare ESP32-H2-Zero](wiring/WIRING.md#waveshare-esp32-h2-zero)
+
+---
+
 ## Installation dans Zigbee2MQTT
 
 ### 1. Installer le converter externe
