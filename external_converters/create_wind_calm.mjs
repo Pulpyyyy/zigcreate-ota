@@ -4,8 +4,23 @@ import * as reporting from 'zigbee-herdsman-converters/lib/reporting';
 
 const ea = exposes.access;
 
-// EP1 — fan speed: ZCL Level 0-254 ↔ speed 1-6
-// level=0 means fan is off (on/off state tracked by m.onOff); don't report a stale speed in that case.
+// EP1 — Fan on/off state from genOnOff
+const fz_fan_state = {
+    cluster: 'genOnOff',
+    type: ['attributeReport', 'readResponse'],
+    convert: (model, msg, publish, options, meta) => {
+        if (msg.endpoint.ID !== 1) return;
+        if (msg.data.hasOwnProperty('onOff')) {
+            return {state: msg.data['onOff'] ? 'ON' : 'OFF'};
+        }
+    },
+};
+
+// EP1 — Fan speed: ZCL Level 0-254 ↔ preset '1'..'6'
+// level=0 means fan off — on/off state handled by fz_fan_state; don't report stale speed.
+const speed_to_level = s => Math.round((s * 254) / 6);
+const level_to_speed = l => Math.max(1, Math.min(6, Math.round((l * 6) / 254)));
+
 const fz_fan_speed = {
     cluster: 'genLevelCtrl',
     type: ['attributeReport', 'readResponse'],
@@ -13,24 +28,33 @@ const fz_fan_speed = {
         if (msg.endpoint.ID !== 1) return;
         if (msg.data.hasOwnProperty('currentLevel')) {
             const lvl = msg.data['currentLevel'];
-            if (lvl === 0) return;  // fan off — on/off state is handled by m.onOff
-            const speed = Math.max(1, Math.min(6, Math.round((lvl * 6) / 254)));
-            return {fan_speed: speed};
+            if (lvl === 0) return;
+            return {preset_mode: String(level_to_speed(lvl))};
         }
     },
 };
-const tz_fan_speed = {
-    key: ['fan_speed'],
+
+const tz_fan = {
+    key: ['state', 'preset_mode'],
     convertSet: async (entity, key, value, meta) => {
-        const speed = Math.max(1, Math.min(6, parseInt(value)));
-        const level = Math.round((speed * 254) / 6);
         const ep1 = meta.device.getEndpoint(1);
-        await ep1.command('genLevelCtrl', 'moveToLevelWithOnOff', {level, transtime: 0});
-        return {state: {fan_speed: speed}};
+        if (key === 'state') {
+            const on = String(value).toUpperCase() === 'ON';
+            await ep1.command('genOnOff', on ? 'on' : 'off', {});
+            return {state: {state: on ? 'ON' : 'OFF'}};
+        }
+        if (key === 'preset_mode') {
+            const speed = Math.max(1, Math.min(6, parseInt(value)));
+            const level = speed_to_level(speed);
+            // moveToLevelWithOnOff turns the fan on if it was off
+            await ep1.command('genLevelCtrl', 'moveToLevelWithOnOff', {level, transtime: 0});
+            return {state: {preset_mode: String(speed), state: 'ON'}};
+        }
     },
     convertGet: async (entity, key, meta) => {
         const ep1 = meta.device.getEndpoint(1);
-        await ep1.read('genLevelCtrl', ['currentLevel']);
+        if (key === 'state')       await ep1.read('genOnOff', ['onOff']);
+        if (key === 'preset_mode') await ep1.read('genLevelCtrl', ['currentLevel']);
     },
 };
 
@@ -100,8 +124,6 @@ export default {
     ota:         true,
 
     extend: [
-        // EP1 — ventilateur on/off
-        m.onOff({endpointNames: ['fan'], powerOnBehavior: false}),
         // EP2 — lumière: on/off uniquement (brightness masqué, colorTemp géré par converter custom)
         m.onOff({endpointNames: ['light']}),
         // EP4 — bip sonore
@@ -110,16 +132,12 @@ export default {
         m.onOff({endpointNames: ['direction'], powerOnBehavior: false}),
     ],
 
-    fromZigbee: [fz_fan_speed, fz_light_color_temp, fz_timer],
-    toZigbee:   [tz_fan_speed, tz_light_color_temp, tz_timer],
+    fromZigbee: [fz_fan_state, fz_fan_speed, fz_light_color_temp, fz_timer],
+    toZigbee:   [tz_fan, tz_light_color_temp, tz_timer],
 
     exposes: [
-        // No .withEndpoint() here: avoids z2m appending '_fan'/'_light'/'_timer' suffix
-        // that would mismatch the keys returned by fromZigbee converters.
-        // Endpoint routing is handled explicitly via meta.device.getEndpoint() in toZigbee.
-        exposes.numeric('fan_speed', ea.ALL)
-            .withValueMin(1).withValueMax(6)
-            .withDescription('Vitesse 1-6'),
+        // Fan: entité HA 'fan' avec preset modes 1-6 → page fan NSPanel Easy
+        exposes.fan().withPresetModes(['1', '2', '3', '4', '5', '6']),
         exposes.enum('light_color_temp', ea.ALL, ['cool', 'neutral', 'warm'])
             .withDescription('Température de couleur (cool=6500K, neutral=2700K, warm=2000K)'),
         exposes.enum('timer_preset', ea.SET, ['1h', '2h', '4h'])
@@ -146,8 +164,9 @@ export default {
         const ep4 = device.getEndpoint(4);
         const ep5 = device.getEndpoint(5);
 
-        // EP1: fan speed (genLevelCtrl)
-        await reporting.bind(ep1, coordinatorEndpoint, ['genLevelCtrl']);
+        // EP1: fan on/off + speed
+        await reporting.bind(ep1, coordinatorEndpoint, ['genOnOff', 'genLevelCtrl']);
+        await reporting.onOff(ep1);
         await reporting.brightness(ep1);
 
         // EP2: color temp (lightingColorCtrl) — on/off configuré par m.onOff()
