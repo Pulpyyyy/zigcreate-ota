@@ -71,7 +71,7 @@ La LED RGB intégrée indique l'état du module en temps réel :
 ### Réinitialisation
 
 - **Bouton BOOT (5 s)** — maintenir le bouton BOOT appuyé 5 secondes remet l'appareil en configuration d'usine : effacement du réseau Zigbee mémorisé, des préférences et de l'historique de diagnostics. L'appareil redémarre ensuite en mode appairage.
-- **GPIO externe** — un signal sur GPIO14 provoque un redémarrage simple (sans effacement).
+- **GPIO externe** — un signal sur GPIO2 provoque un redémarrage simple (sans effacement).
 
 ### Auto-recovery Zigbee
 

@@ -6,7 +6,7 @@ Ce guide décrit les connexions à réaliser entre l'ESP32-H2 et le MCU Tuya du 
 
 ## Alimentation — point critique
 
-Le MCU Tuya expose une sortie **5 V** qui sert à alimenter l'ESP32-H2 via sa broche **3V3**. Ne jamais alimenter l'ESP32-H2 simultanément via USB et via cette broche — risque de conflit d'alimentation.
+Le MCU Tuya expose une sortie **5 V** qui sert à alimenter l'ESP32-H2 via sa broche **5V**. Ne jamais alimenter l'ESP32-H2 simultanément via USB et via cette broche — risque de conflit d'alimentation.
 
 ---
 
@@ -14,7 +14,7 @@ Le MCU Tuya expose une sortie **5 V** qui sert à alimenter l'ESP32-H2 via sa br
 
 | Signal | De | Vers | Remarque |
 |---|---|---|---|
-| VCC | MCU Tuya — 5 V | ESP32-H2 — broche **3V3** | Alimentation directe |
+| VCC | MCU Tuya — 5 V | ESP32-H2 — broche **5V** | Alimentation directe |
 | GND | MCU Tuya — GND | ESP32-H2 — GND | Masse commune obligatoire |
 | TX | ESP32-H2 — GPIO TX | MCU Tuya — RX | |
 | RX | MCU Tuya — TX | ESP32-H2 — GPIO RX | |
@@ -29,9 +29,9 @@ Le MCU Tuya expose une sortie **5 V** qui sert à alimenter l'ESP32-H2 via sa br
 En-têtes de la carte (vue de dessus, USB-C en haut) :
 
 En-tête gauche (haut → bas)   En-tête droit (haut → bas)
-  5V                             24 (TX)
+  5V   ◄── VCC depuis MCU        24 (TX)
   GND  ─── Masse commune         23 (RX)
-  3V3  ◄── VCC depuis MCU        25
+  3V3                             25
   0                              22
   1                              14
   2    ◄── EXT_RESET             13
@@ -44,7 +44,7 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
 |---|---|---|---|
 | UART TX → MCU Tuya RX | GPIO4 | En-tête gauche, 8e | |
 | UART RX ← MCU Tuya TX | GPIO5 | En-tête gauche, 9e | |
-| Alimentation entrée | — | En-tête gauche, 3e (**3V3**) | Depuis le 5 V du MCU Tuya |
+| Alimentation entrée | — | En-tête gauche, 1e (**5V**) | Depuis le 5 V du MCU Tuya |
 | Masse | — | En-tête gauche, 2e (**GND**) | Commune avec MCU Tuya |
 | LED RGB (WS2812) | GPIO8 | Pad LOG (castellé) | Interne, ne pas câbler |
 | Bouton BOOT / Reset Zigbee | GPIO9 | Pad castellé bas | Maintenir 5 s pour reset usine |
@@ -57,7 +57,7 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
 ```
 Waveshare ESP32-H2-Zero          MCU Tuya
 ┌──────────────────┐            ┌──────────┐
-│  3V3         ◄───┼────────────│ 5V       │
+│  5V          ◄───┼────────────│ 5V       │
 │  GND         ────┼────────────│ GND      │
 │  GPIO4  (TX) ────┼────────────│ RX       │
 │  GPIO5  (RX) ◄───┼────────────│ TX       │
