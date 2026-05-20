@@ -105,7 +105,8 @@ const tz_light_color_temp = {
         // colorTemperature (0x0007) is read-only in ZCL — must use the moveToColorTemp
         // command (0x0A) so the firmware's command callback fires instead of Write Attribute.
         await ep2.command('lightingColorCtrl', 'moveToColorTemp', {colortemp: mireds, transtime: 0});
-        return {state: {light_color_temp: value}};
+        // Firmware auto-turns on the light when CT is set while off — reflect it optimistically.
+        return {state: {light_color_temp: value, state_light: 'ON'}};
     },
     convertGet: async (entity, key, meta) => {
         const ep2 = meta.device.getEndpoint(2);
