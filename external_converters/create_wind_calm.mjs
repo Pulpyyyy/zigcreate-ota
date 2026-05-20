@@ -58,6 +58,30 @@ const tz_fan = {
     },
 };
 
+// EP2 — lumière on/off (genOnOff uniquement — pas de genLevelCtrl sur EP2)
+const fz_light_onoff = {
+    cluster: 'genOnOff',
+    type: ['attributeReport', 'readResponse'],
+    convert: (model, msg, publish, options, meta) => {
+        if (msg.endpoint.ID !== 2) return;
+        if (msg.data.hasOwnProperty('onOff')) {
+            return {state_light: msg.data['onOff'] ? 'ON' : 'OFF'};
+        }
+    },
+};
+const tz_light_onoff = {
+    key: ['state_light'],
+    convertSet: async (entity, key, value, meta) => {
+        const ep2 = meta.device.getEndpoint(2);
+        const on = String(value).toUpperCase() === 'ON';
+        await ep2.command('genOnOff', on ? 'on' : 'off', {});
+        return {state: {state_light: on ? 'ON' : 'OFF'}};
+    },
+    convertGet: async (entity, key, meta) => {
+        await meta.device.getEndpoint(2).read('genOnOff', ['onOff']);
+    },
+};
+
 // EP2 — color temp: 3 paliers Tuya ↔ mireds ZCL
 // cool=153 mir (Tuya 0), neutral=370 mir (Tuya 500), warm=500 mir (Tuya 1000)
 const COLOR_TEMP = {cool: 153, neutral: 370, warm: 500};
@@ -124,20 +148,19 @@ export default {
     ota:         true,
 
     extend: [
-        // EP2 — lumière: on/off uniquement (brightness masqué, colorTemp géré par converter custom)
-        m.onOff({endpointNames: ['light']}),
         // EP4 — bip sonore
         m.onOff({endpointNames: ['beep']}),
         // EP5 — sens de rotation
         m.onOff({endpointNames: ['direction'], powerOnBehavior: false}),
     ],
 
-    fromZigbee: [fz_fan_state, fz_fan_speed, fz_light_color_temp, fz_timer],
-    toZigbee:   [tz_fan, tz_light_color_temp, tz_timer],
+    fromZigbee: [fz_fan_state, fz_fan_speed, fz_light_onoff, fz_light_color_temp, fz_timer],
+    toZigbee:   [tz_fan, tz_light_onoff, tz_light_color_temp, tz_timer],
 
     exposes: [
         // Fan: entité HA 'fan' avec preset modes 1-6 → page fan NSPanel Easy
         exposes.fan().withPresetModes(['1', '2', '3', '4', '5', '6']),
+        exposes.light().withEndpoint('light'),
         exposes.enum('light_color_temp', ea.ALL, ['cool', 'neutral', 'warm'])
             .withDescription('Température de couleur (cool=6500K, neutral=2700K, warm=2000K)'),
         exposes.enum('timer_preset', ea.SET, ['1h', '2h', '4h'])
@@ -169,8 +192,9 @@ export default {
         await reporting.onOff(ep1);
         await reporting.brightness(ep1);
 
-        // EP2: color temp (lightingColorCtrl) — on/off configuré par m.onOff()
-        await reporting.bind(ep2, coordinatorEndpoint, ['lightingColorCtrl']);
+        // EP2: on/off + color temp
+        await reporting.bind(ep2, coordinatorEndpoint, ['genOnOff', 'lightingColorCtrl']);
+        await reporting.onOff(ep2);
         await reporting.colorTemperature(ep2);
 
         // EP3: timer (genLevelCtrl)
