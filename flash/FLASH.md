@@ -8,7 +8,7 @@ Ce guide explique comment flasher le firmware **ZigCreate** sur une carte ESP32-
 
 - **Navigateur** : Google Chrome ou Microsoft Edge (WebSerial requis — Firefox non supporté)
 - **Câble** : USB-C (données, pas uniquement charge)
-- **Drivers** : Si votre carte utilise un chip USB-UART (CP2102, CH340…), installez le driver correspondant. Les cartes avec USB natif ESP32-H2 n'en ont pas besoin.
+- **Drivers** : Si votre carte utilise un chip USB-UART (CP2102, CH340…), installez le driver correspondant. Les cartes avec USB natif ESP32-H2 (ex : Waveshare ESP32-H2-Zero) n'en ont pas besoin.
 
 ---
 
@@ -18,12 +18,13 @@ Rendez-vous sur la dernière release du dépôt OTA :
 
 > **https://github.com/Pulpyyyy/zigcreate-ota/releases/latest**
 
-Téléchargez ces trois fichiers :
+Téléchargez ces quatre fichiers :
 
 | Fichier | Rôle |
 |---|---|
 | `bootloader.bin` | Bootloader ESP32-H2 |
-| `partition-table.bin` | Table de partitions personnalisée |
+| `partition-table.bin` | Table de partitions |
+| `ota_data_initial.bin` | Indique au bootloader la partition à démarrer |
 | `zigcreate.bin` | Firmware applicatif |
 
 > `zigcreate.ota` est réservé aux mises à jour Zigbee over-the-air — **ne pas utiliser ici**.
@@ -33,7 +34,7 @@ Téléchargez ces trois fichiers :
 ## 2. Passer l'ESP32-H2 en mode téléchargement (Download Mode)
 
 1. Maintenez le bouton **BOOT** (GPIO9) enfoncé
-2. Appuyez brièvement sur **RESET** (EN), puis relâchez-le
+2. Appuyez brièvement sur **RESET** (bouton EN ou broche EN à la masse), puis relâchez-le
 3. Relâchez le bouton **BOOT**
 
 La carte est maintenant en mode téléchargement et attend un flash.
@@ -56,7 +57,7 @@ Accédez à : **https://espressif.github.io/esptool-js/**
 
 ### 3.3 Configurer le flash
 
-Dans la section **Flash Address**, renseignez les trois fichiers avec leurs adresses exactes :
+Dans la section **Flash Address**, renseignez les quatre fichiers avec leurs adresses exactes :
 
 | Fichier | Adresse flash |
 |---|---|
@@ -73,7 +74,6 @@ Pour ajouter un fichier supplémentaire, cliquez sur **Add File**.
 
 | Paramètre | Valeur |
 |---|---|
-| Baud rate | `9600` |
 | Flash mode | `keep` |
 | Flash frequency | `keep` |
 | Flash size | `keep` |
@@ -90,9 +90,14 @@ Pour ajouter un fichier supplémentaire, cliquez sur **Add File**.
 
 ## 4. Vérification
 
-Après le flash, la carte redémarre automatiquement sur le firmware ZigCreate. Le témoin LED doit s'allumer brièvement au démarrage (séquence d'initialisation Zigbee).
+Après le flash, la carte redémarre automatiquement. La séquence LED normale est :
 
-Si la carte ne redémarre pas, appuyez manuellement sur **RESET**.
+1. **Orange** (quelques secondes) — initialisation du module
+2. **Cyan clignotant** — le module cherche un réseau Zigbee (appairage en cours)
+
+> Le cyan clignotant est normal si aucun coordinateur Zigbee n'est à portée. L'appairage se fait depuis votre box domotique.
+
+Si la carte ne redémarre pas, appuyez manuellement sur **RESET** (bouton EN ou broche EN à la masse brièvement).
 
 ---
 
@@ -101,6 +106,7 @@ Si la carte ne redémarre pas, appuyez manuellement sur **RESET**.
 ```
 0x00000  bootloader.bin
 0x08000  partition-table.bin
+0x10000  ota_data_initial.bin
 0x30000  zigcreate.bin
 ```
 
@@ -112,19 +118,5 @@ Si la carte ne redémarre pas, appuyez manuellement sur **RESET**.
 |---|---|
 | Port non visible dans le navigateur | Vérifier le driver USB-UART, essayer un autre câble |
 | Erreur de connexion | Recommencer la procédure mode téléchargement (étape 2) |
-| La carte ne démarre pas après flash | Vérifier que les trois fichiers sont bien flashés aux bonnes adresses |
-| `Failed to connect` | S'assurer que aucun autre programme (moniteur série, IDE) n'occupe le port |
-
----
-
-## Branchement
-
-> **Pour l'instant**, la carte doit rester alimentée via **USB**. Ne connectez pas le VCC de l'adaptateur USB-UART pour éviter tout conflit d'alimentation.
-> Branchez toutefois le **GND** pour partager la masse et éviter les parasites sur les lignes série.
-
-| Signal | Adaptateur USB-UART |
-|---|---|
-| VCC | — (non connecté) |
-| GND | GND |
-| TX (carte) | RX |
-| RX (carte) | TX |
+| La carte ne démarre pas après flash | Vérifier que les quatre fichiers sont bien flashés aux bonnes adresses |
+| `Failed to connect` | S'assurer qu'aucun autre programme (moniteur série, IDE) n'occupe le port |

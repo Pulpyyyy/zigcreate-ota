@@ -47,7 +47,7 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
 | Alimentation entrée | — | En-tête gauche, 1e (**5V**) | Depuis le 5 V du MCU Tuya |
 | Masse | — | En-tête gauche, 2e (**GND**) | Commune avec MCU Tuya |
 | LED RGB (WS2812) | GPIO8 | Pad LOG (castellé) | Interne, ne pas câbler |
-| Bouton BOOT / Reset Zigbee | GPIO9 | Pad castellé bas | Maintenir 5 s pour reset usine |
+| Bouton BOOT / Reset Zigbee | GPIO9 | Pad castellé bas | En fonctionnement normal : maintenir 5 s pour reset usine. Pour le flash : voir [FLASH.md](../flash/FLASH.md) |
 | Reset externe (actif bas) | GPIO2 | En-tête gauche, 7e | Redémarrage software |
 | USB D+ | GPIO27 | Pad castellé bas | Réservé USB, ne pas utiliser |
 | USB D- | GPIO26 | Pad castellé bas | Réservé USB, ne pas utiliser |

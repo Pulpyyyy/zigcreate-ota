@@ -60,18 +60,18 @@ La LED RGB intégrée indique l'état du module en temps réel :
 
 | Couleur / comportement | Signification |
 |---|---|
-| Orange (ramping) | Démarrage en cours |
-| Cyan clignotant (0,5 s) | Recherche d'un réseau Zigbee (appairage) |
-| 3 flashes verts | Appairage réussi |
-| Rouge clignotant rapide | Échec de connexion, nouvelle tentative |
-| Ambre (1 s on / 2 s off) | Mode dégradé — MCU injoignable |
-| Orange clignotant | Réinitialisation en attente (bouton maintenu) |
-| Éteinte | Fonctionnement normal |
+| 🟠 Orange (ramping) | Démarrage en cours |
+| 🔵 Cyan clignotant (0,5 s) | Recherche d'un réseau Zigbee (appairage) |
+| 🟢 3 flashes verts | Appairage réussi |
+| 🔴 Rouge clignotant rapide | Échec de connexion, nouvelle tentative |
+| 🟡 Ambre (1 s on / 2 s off) | Mode dégradé — MCU injoignable |
+| 🟠 Orange clignotant | Réinitialisation en attente (bouton maintenu) |
+| ⚫ Éteinte | Fonctionnement normal |
 
 ### Réinitialisation
 
 - **Bouton BOOT (5 s)** — maintenir le bouton BOOT appuyé 5 secondes remet l'appareil en configuration d'usine : effacement du réseau Zigbee mémorisé, des préférences et de l'historique de diagnostics. L'appareil redémarre ensuite en mode appairage.
-- **GPIO externe** — un signal sur GPIO2 provoque un redémarrage simple (sans effacement).
+- **GPIO externe** — un signal bas sur le GPIO de reset externe provoque un redémarrage simple (sans effacement). Le GPIO concerné dépend de la carte — consultez le [guide de câblage](wiring/WIRING.md).
 
 ### Auto-recovery Zigbee
 
@@ -79,7 +79,7 @@ Si la stack Zigbee échoue à démarrer 3 fois consécutives (détection de bouc
 
 ### Mode dégradé MCU
 
-Si le MCU Tuya ne répond plus pendant 15 secondes, le module passe en mode dégradé : les commandes entrantes sont ignorées et la LED passe en ambre. Si le MCU répond à nouveau dans les 60 secondes suivantes, le module reprend son fonctionnement normal automatiquement.
+Si le MCU Tuya ne répond plus pendant 15 secondes, le module passe en mode dégradé : les commandes Zigbee vers le ventilateur sont ignorées et la LED passe en ambre. Dès que le MCU répond à nouveau, le module reprend son fonctionnement normal automatiquement.
 
 ---
 
