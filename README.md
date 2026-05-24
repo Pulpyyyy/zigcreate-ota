@@ -9,8 +9,8 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 | Entité | Contrôles disponibles |
 |---|---|
 | **Ventilateur** | Marche/arrêt · 6 niveaux de vitesse |
-| **Lumière** | Marche/arrêt · Luminosité continue · Température de couleur (Froid / Neutre / Chaud) |
-| **Minuterie** | Préréglages 1 h / 2 h / 4 h · Décompte en cours visible en temps réel |
+| **Lumière** | Marche/arrêt · Température de couleur (Froid / Neutre / Chaud) |
+| **Minuterie** | Préréglages 1 h / 2 h / 4 h · Décompte visible en temps réel · Réinitialisation automatique à OFF en fin de décompte |
 | **Son** | Activation / désactivation du bip de confirmation |
 | **Direction** | Mode Été (brassage vers le bas) · Mode Hiver (remontée d'air chaud) |
 | **Comportement après coupure** | État de la lumière et du son configurables (éteint / allumé / bascule / restauration) |
@@ -24,8 +24,8 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 Toutes les commandes sont disponibles depuis Zigbee2MQTT ou toute box compatible Zigbee :
 
 - **Ventilateur** — marche/arrêt indépendant de la vitesse ; la vitesse peut être réglée de 1 à 6 sans éteindre le ventilateur. Régler la vitesse à 0 éteint le ventilateur.
-- **Lumière** — marche/arrêt avec mémorisation de l'état ; luminosité réglable en continu (0–100 %) ; température de couleur en 3 paliers : Froid (~6 500 K), Neutre (~2 700 K), Chaud (~2 000 K).
-- **Minuterie** — déclenche l'extinction automatique après 1 h, 2 h ou 4 h. Le décompte restant (en minutes) est remontée en temps réel dans l'interface.
+- **Lumière** — marche/arrêt avec mémorisation de l'état ; température de couleur en 3 paliers : Froid (~6 500 K), Neutre (~2 700 K), Chaud (~2 000 K).
+- **Minuterie** — déclenche l'extinction automatique après 1 h, 2 h ou 4 h. Le décompte restant (en minutes) est visible en temps réel dans l'interface. Le préréglage repasse automatiquement à `OFF` lorsque le décompte atteint zéro.
 - **Son (bip)** — active ou désactive le bip sonore émis par l'appareil lors de chaque commande.
 - **Direction** — inverse le sens de rotation du ventilateur pour le mode Hiver.
 

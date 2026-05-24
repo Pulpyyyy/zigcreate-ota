@@ -10,7 +10,7 @@ const fz_fan_state = {
     convert: (model, msg, publish, options, meta) => {
         if (msg.endpoint.ID !== 1) return;
         if (msg.data.hasOwnProperty('onOff')) {
-            return {state: msg.data['onOff'] ? 'ON' : 'OFF'};
+            return {fan: msg.data['onOff'] ? 'ON' : 'OFF'};
         }
     },
 };
@@ -34,13 +34,13 @@ const fz_fan_speed = {
 };
 
 const tz_fan = {
-    key: ['state', 'fan_mode'],
+    key: ['fan', 'fan_mode'],
     convertSet: async (entity, key, value, meta) => {
         const ep1 = meta.device.getEndpoint(1);
-        if (key === 'state') {
+        if (key === 'fan') {
             const on = String(value).toUpperCase() === 'ON';
             await ep1.command('genOnOff', on ? 'on' : 'off', {});
-            return {state: {state: on ? 'ON' : 'OFF'}};
+            return {state: {fan: on ? 'ON' : 'OFF'}};
         }
         if (key === 'fan_mode') {
             const parsed = parseInt(value);
@@ -48,12 +48,12 @@ const tz_fan = {
             const speed = Math.max(1, Math.min(6, parsed));
             const level = speed_to_level(speed);
             await ep1.command('genLevelCtrl', 'moveToLevelWithOnOff', {level, transtime: 0});
-            return {state: {fan_mode: String(speed), state: 'ON'}};
+            return {state: {fan_mode: String(speed), fan: 'ON'}};
         }
     },
     convertGet: async (entity, key, meta) => {
         const ep1 = meta.device.getEndpoint(1);
-        if (key === 'state')    await ep1.read('genOnOff', ['onOff']);
+        if (key === 'fan') await ep1.read('genOnOff', ['onOff']);
         if (key === 'fan_mode') await ep1.read('genLevelCtrl', ['currentLevel']);
     },
 };
@@ -65,17 +65,17 @@ const fz_light_onoff = {
     convert: (model, msg, publish, options, meta) => {
         if (msg.endpoint.ID !== 2) return;
         if (msg.data.hasOwnProperty('onOff')) {
-            return {state_light: msg.data['onOff'] ? 'ON' : 'OFF'};
+            return {light: msg.data['onOff'] ? 'ON' : 'OFF'};
         }
     },
 };
 const tz_light_onoff = {
-    key: ['state_light'],
+    key: ['light'],
     convertSet: async (entity, key, value, meta) => {
         const ep2 = meta.device.getEndpoint(2);
         const on = String(value).toUpperCase() === 'ON';
         await ep2.command('genOnOff', on ? 'on' : 'off', {});
-        return {state: {state_light: on ? 'ON' : 'OFF'}};
+        return {state: {light: on ? 'ON' : 'OFF'}};
     },
     convertGet: async (entity, key, meta) => {
         await meta.device.getEndpoint(2).read('genOnOff', ['onOff']);
@@ -83,8 +83,8 @@ const tz_light_onoff = {
 };
 
 // EP3 — Timer
-// fz_timer: ZCL level → timer_countdown (real decreasing value, read-only)
-// tz_timer: timer_preset (enum 0/60/120/240) → ZCL level (write-only)
+// fz_timer: ZCL level → timer_countdown (minutes) + timer_preset='OFF' when idle
+// tz_timer: timer_preset (OFF/1h/2h/4h) → ZCL level; state reflects the active preset
 const fz_timer = {
     cluster: 'genLevelCtrl',
     type: ['attributeReport', 'readResponse'],
@@ -92,8 +92,9 @@ const fz_timer = {
         if (msg.endpoint.ID !== 3) return;
         if (msg.data.hasOwnProperty('currentLevel')) {
             const lvl = msg.data['currentLevel'];
-            const minutes = lvl;  // ZCL level = minutes directly (firmware v2)
-            return {timer_countdown: minutes};
+            const result = {timer_countdown: lvl};
+            if (lvl === 0) result.timer_preset = 'off';
+            return result;
         }
     },
 };
@@ -104,6 +105,10 @@ const tz_timer = {
         const level = levelMap[String(value)] ?? 0;
         const ep3 = meta.device.getEndpoint(3);
         await ep3.command('genLevelCtrl', 'moveToLevel', {level, transtime: 0});
+        return {state: {timer_preset: level > 0 ? value : 'off'}};
+    },
+    convertGet: async (entity, key, meta) => {
+        await meta.device.getEndpoint(3).read('genLevelCtrl', ['currentLevel']);
     },
 };
 
@@ -131,7 +136,7 @@ const tz_light_color_temp = {
         // command (0x0A) so the firmware's command callback fires instead of Write Attribute.
         await ep2.command('lightingColorCtrl', 'moveToColorTemp', {colortemp: mireds, transtime: 0});
         // Firmware auto-turns on the light when CT is set while off — reflect it optimistically.
-        return {state: {light_color_temp: value, state_light: 'ON'}};
+        return {state: {light_color_temp: value, light: 'ON'}};
     },
     convertGet: async (entity, key, meta) => {
         const ep2 = meta.device.getEndpoint(2);
@@ -146,41 +151,41 @@ const fz_beep = {
     convert: (model, msg, publish, options, meta) => {
         if (msg.endpoint.ID !== 4) return;
         if (msg.data.hasOwnProperty('onOff')) {
-            return {state_beep: msg.data['onOff'] ? 'ON' : 'OFF'};
+            return {beep: msg.data['onOff'] ? 'ON' : 'OFF'};
         }
     },
 };
 const tz_beep = {
-    key: ['state_beep'],
+    key: ['beep'],
     convertSet: async (entity, key, value, meta) => {
         const ep4 = meta.device.getEndpoint(4);
         const on = String(value).toUpperCase() === 'ON';
         await ep4.command('genOnOff', on ? 'on' : 'off', {});
-        return {state: {state_beep: on ? 'ON' : 'OFF'}};
+        return {state: {beep: on ? 'ON' : 'OFF'}};
     },
     convertGet: async (entity, key, meta) => {
         await meta.device.getEndpoint(4).read('genOnOff', ['onOff']);
     },
 };
 
-// EP5 — Fan rotation direction (OFF=forward, ON=reverse)
+// EP5 — Fan rotation direction (forward=OFF, reverse=ON)
 const fz_direction = {
     cluster: 'genOnOff',
     type: ['attributeReport', 'readResponse'],
     convert: (model, msg, publish, options, meta) => {
         if (msg.endpoint.ID !== 5) return;
         if (msg.data.hasOwnProperty('onOff')) {
-            return {state_direction: msg.data['onOff'] ? 'ON' : 'OFF'};
+            return {direction: msg.data['onOff'] ? 'reverse' : 'forward'};
         }
     },
 };
 const tz_direction = {
-    key: ['state_direction'],
+    key: ['direction'],
     convertSet: async (entity, key, value, meta) => {
         const ep5 = meta.device.getEndpoint(5);
-        const on = String(value).toUpperCase() === 'ON';
-        await ep5.command('genOnOff', on ? 'on' : 'off', {});
-        return {state: {state_direction: on ? 'ON' : 'OFF'}};
+        const reverse = value === 'reverse';
+        await ep5.command('genOnOff', reverse ? 'on' : 'off', {});
+        return {state: {direction: value}};
     },
     convertGet: async (entity, key, meta) => {
         await meta.device.getEndpoint(5).read('genOnOff', ['onOff']);
@@ -235,23 +240,23 @@ export default {
     toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep],
 
     exposes: [
-        exposes.binary('state', ea.ALL, 'ON', 'OFF')
+        exposes.binary('fan', ea.ALL, 'ON', 'OFF')
             .withDescription('Fan on/off'),
         exposes.enum('fan_mode', ea.ALL, ['1', '2', '3', '4', '5', '6'])
             .withDescription('Fan speed'),
-        exposes.binary('state_light', ea.ALL, 'ON', 'OFF')
+        exposes.binary('light', ea.ALL, 'ON', 'OFF')
             .withDescription('Light on/off'),
         exposes.enum('light_color_temp', ea.ALL, ['cool', 'neutral', 'warm'])
             .withDescription('Color temperature (cool=6500K, neutral=2700K, warm=2000K)'),
-        exposes.enum('timer_preset', ea.SET, ['1h', '2h', '4h'])
-            .withDescription('Timer setting'),
+        exposes.enum('timer_preset', ea.STATE_SET, ['off', '1h', '2h', '4h'])
+            .withDescription('Timer setting; auto-resets to OFF when countdown reaches 0'),
         exposes.numeric('timer_countdown', ea.STATE)
             .withValueMin(0).withValueMax(240).withUnit('min')
             .withDescription('Remaining countdown (min)'),
-        exposes.binary('state_beep', ea.ALL, 'ON', 'OFF')
+        exposes.binary('beep', ea.ALL, 'ON', 'OFF')
             .withDescription('Audible beep'),
-        exposes.binary('state_direction', ea.ALL, 'ON', 'OFF')
-            .withDescription('Rotation direction (OFF=forward, ON=reverse)'),
+        exposes.enum('direction', ea.ALL, ['forward', 'reverse'])
+            .withDescription('Fan rotation direction'),
         exposes.enum('power_on_behavior_light', ea.ALL, ['off', 'on', 'toggle', 'previous'])
             .withDescription('Light power-on behavior'),
         exposes.enum('power_on_behavior_beep', ea.ALL, ['off', 'on', 'toggle', 'previous'])
@@ -290,6 +295,15 @@ export default {
         // EP5: fan direction on/off
         await reporting.bind(ep5, coordinatorEndpoint, ['genOnOff']);
         await reporting.onOff(ep5);
+
+        // Read current states so Z2M cache is populated immediately after configure
+        await ep1.read('genOnOff', ['onOff']);
+        await ep1.read('genLevelCtrl', ['currentLevel']);
+        await ep2.read('genOnOff', ['onOff']);
+        await ep2.read('lightingColorCtrl', ['colorTemperature']);
+        await ep4.read('genOnOff', ['onOff']);
+        await ep5.read('genOnOff', ['onOff']);
+        await ep3.read('genLevelCtrl', ['currentLevel']);
 
         // Read StartUpOnOff for light and beep (non-reportable, read on configure)
         await ep2.read('genOnOff', ['startUpOnOff']);
