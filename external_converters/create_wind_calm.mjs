@@ -15,7 +15,7 @@ const fz_fan_state = {
     },
 };
 
-// EP1 — Fan speed: ZCL Level 0-254 ↔ speed 1-6
+// EP1 — Fan speed: ZCL Level 0-254 ↔ preset '1'..'6'
 // level=0 means fan off — on/off state handled by fz_fan_state; don't report stale speed.
 const speed_to_level = s => Math.round((s * 254) / 6);
 const level_to_speed = l => Math.max(1, Math.min(6, Math.round((l * 6) / 254)));
@@ -28,13 +28,13 @@ const fz_fan_speed = {
         if (msg.data.hasOwnProperty('currentLevel')) {
             const lvl = msg.data['currentLevel'];
             if (lvl === 0) return;
-            return {speed: level_to_speed(lvl)};
+            return {fan_mode: String(level_to_speed(lvl))};
         }
     },
 };
 
 const tz_fan = {
-    key: ['fan', 'speed'],
+    key: ['fan', 'fan_mode'],
     convertSet: async (entity, key, value, meta) => {
         const ep1 = meta.device.getEndpoint(1);
         if (key === 'fan') {
@@ -42,18 +42,19 @@ const tz_fan = {
             await ep1.command('genOnOff', on ? 'on' : 'off', {});
             return {state: {fan: on ? 'ON' : 'OFF'}};
         }
-        if (key === 'speed') {
-            const speed = Math.max(1, Math.min(6, parseInt(value)));
-            if (isNaN(speed)) return;
+        if (key === 'fan_mode') {
+            const parsed = parseInt(value);
+            if (isNaN(parsed)) return;
+            const speed = Math.max(1, Math.min(6, parsed));
             const level = speed_to_level(speed);
             await ep1.command('genLevelCtrl', 'moveToLevelWithOnOff', {level, transtime: 0});
-            return {state: {speed, fan: 'ON'}};
+            return {state: {fan_mode: String(speed), fan: 'ON'}};
         }
     },
     convertGet: async (entity, key, meta) => {
         const ep1 = meta.device.getEndpoint(1);
         if (key === 'fan') await ep1.read('genOnOff', ['onOff']);
-        if (key === 'speed') await ep1.read('genLevelCtrl', ['currentLevel']);
+        if (key === 'fan_mode') await ep1.read('genLevelCtrl', ['currentLevel']);
     },
 };
 
@@ -228,11 +229,6 @@ const tz_power_on_behavior_beep = {
     },
 };
 
-const fanExpose = new exposes.Fan().withState('fan').withSpeed(1, 6);
-fanExpose.features[0].label = 'Fan';
-fanExpose.features[0].description = 'Fan on/off';
-fanExpose.features[0].icon = 'mdi:fan';
-
 export default {
     fingerprint: [{modelID: 'WIND-CALM', manufacturerName: 'CREATE'}],
     model:       'WIND-CALM',
@@ -244,7 +240,10 @@ export default {
     toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep],
 
     exposes: [
-        fanExpose,
+        exposes.binary('fan', ea.ALL, 'ON', 'OFF')
+            .withDescription('Fan on/off'),
+        exposes.enum('fan_mode', ea.ALL, ['1', '2', '3', '4', '5', '6'])
+            .withDescription('Fan speed'),
         exposes.binary('light', ea.ALL, 'ON', 'OFF')
             .withDescription('Light on/off'),
         exposes.enum('light_color_temp', ea.ALL, ['cool', 'neutral', 'warm'])
