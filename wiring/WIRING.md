@@ -65,6 +65,16 @@ Waveshare ESP32-H2-Zero          MCU Tuya
 └──────────────────┘            └──────────┘
 ```
 
+### Photos du câblage
+
+ESP32-H2-Zero avec les connecteurs Dupont :
+
+![ESP32-H2-Zero câblé](../pcb/H2%20zero/28e13aca6d04eea212abd1fd432b93a9633fbf5a.jpeg)
+
+MCU Tuya côté ventilateur :
+
+![MCU Tuya câblé](../pcb/H2%20zero/df2e5fe1d76eeea9446db5ca287b730bad6cc78a.jpeg)
+
 ---
 
 ## Reset externe (optionnel)
