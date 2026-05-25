@@ -144,3 +144,47 @@ ota:
 ```
 
 Redémarrez Zigbee2MQTT. Les mises à jour firmware seront proposées automatiquement depuis l'interface.
+
+---
+
+## Installation dans ZHA (Home Assistant)
+
+> ZHA est l'intégration Zigbee native de Home Assistant. L'appareil est supporté via un **quirk custom** (équivalent du converter externe pour Z2M).
+
+### 1. Installer le quirk custom
+
+Copiez le fichier `zha_quirks/create_wind_calm.py` dans le dossier `/config/custom_zha_quirks/` de votre installation Home Assistant (créez le dossier s'il n'existe pas).
+
+```
+config/
+└── custom_zha_quirks/
+    └── create_wind_calm.py
+```
+
+### 2. Déclarer le dossier de quirks dans Home Assistant
+
+Ajoutez l'entrée suivante dans votre `configuration.yaml` :
+
+```yaml
+zha:
+  custom_quirks_path: /config/custom_zha_quirks
+```
+
+### 3. Réappairer l'appareil
+
+Redémarrez Home Assistant, puis réappairez l'appareil **WIND-CALM (CREATE)**. Les entités suivantes seront créées :
+
+| Endpoint | Type d'entité HA | Fonction |
+|---|---|---|
+| EP1 | Lumière dimmable | Ventilateur — curseur de luminosité = vitesse 1 à 6 |
+| EP2 | Lumière température couleur | Lumière — 3 paliers : 153 / 370 / 500 mireds |
+| EP4 | Interrupteur | Bip sonore (activation / désactivation) |
+| EP5 | Interrupteur | Direction (éteint = été / allumé = hiver) |
+
+> **Note :** La minuterie (EP3) n'a pas d'entité HA standard. Elle peut être pilotée via le service `zha.issue_zigbee_cluster_command` dans des automatisations (cluster `LevelControl`, commande `moveToLevel`, `level` = durée en minutes : 60, 120 ou 240).
+
+### Limitations vs Zigbee2MQTT
+
+- **Ventilateur (EP1)** : ZHA ne peut pas créer une entité `fan` native sans le cluster `FanControl` (0x0202). L'appareil étant piloté via `genLevelCtrl`, il apparaît comme une lumière dimmable — le curseur de luminosité correspond à la vitesse.
+- **Température de couleur** : le slider HA est continu, mais le firmware n'accepte que 3 valeurs (153, 370, 500 mireds).
+- **Mises à jour OTA** : les OTA via ZHA ne sont pas supportées pour ce firmware.

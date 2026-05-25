@@ -3,32 +3,16 @@ import * as reporting from 'zigbee-herdsman-converters/lib/reporting';
 
 const ea = exposes.access;
 
-// EP1 — Fan on/off state from genOnOff
-const fz_fan_state = {
-    cluster: 'genOnOff',
+// EP1 — Fan: FanControl cluster (0x0202), fanMode 0=off 1-6=speed
+const fz_fan_mode = {
+    cluster: 'hvacFanCtrl',
     type: ['attributeReport', 'readResponse'],
     convert: (model, msg, publish, options, meta) => {
         if (msg.endpoint.ID !== 1) return;
-        if (msg.data.hasOwnProperty('onOff')) {
-            return {fan: msg.data['onOff'] ? 'ON' : 'OFF'};
-        }
-    },
-};
-
-// EP1 — Fan speed: ZCL Level 0-254 ↔ preset '1'..'6'
-// level=0 means fan off — on/off state handled by fz_fan_state; don't report stale speed.
-const speed_to_level = s => Math.round((s * 254) / 6);
-const level_to_speed = l => Math.max(1, Math.min(6, Math.round((l * 6) / 254)));
-
-const fz_fan_speed = {
-    cluster: 'genLevelCtrl',
-    type: ['attributeReport', 'readResponse'],
-    convert: (model, msg, publish, options, meta) => {
-        if (msg.endpoint.ID !== 1) return;
-        if (msg.data.hasOwnProperty('currentLevel')) {
-            const lvl = msg.data['currentLevel'];
-            if (lvl === 0) return;
-            return {fan_mode: String(level_to_speed(lvl))};
+        if (msg.data.hasOwnProperty('fanMode')) {
+            const mode = msg.data['fanMode'];
+            if (mode === 0) return {fan: 'OFF'};
+            return {fan: 'ON', fan_mode: String(mode)};
         }
     },
 };
@@ -39,22 +23,24 @@ const tz_fan = {
         const ep1 = meta.device.getEndpoint(1);
         if (key === 'fan') {
             const on = String(value).toUpperCase() === 'ON';
-            await ep1.command('genOnOff', on ? 'on' : 'off', {});
-            return {state: {fan: on ? 'ON' : 'OFF'}};
+            if (!on) {
+                await ep1.write('hvacFanCtrl', {fanMode: 0});
+                return {state: {fan: 'OFF'}};
+            }
+            const cur = parseInt(meta.state.fan_mode) || 1;
+            const speed = Math.max(1, Math.min(6, cur));
+            await ep1.write('hvacFanCtrl', {fanMode: speed});
+            return {state: {fan: 'ON', fan_mode: String(speed)}};
         }
         if (key === 'fan_mode') {
-            const parsed = parseInt(value);
-            if (isNaN(parsed)) return;
-            const speed = Math.max(1, Math.min(6, parsed));
-            const level = speed_to_level(speed);
-            await ep1.command('genLevelCtrl', 'moveToLevelWithOnOff', {level, transtime: 0});
-            return {state: {fan_mode: String(speed), fan: 'ON'}};
+            const speed = Math.max(1, Math.min(6, parseInt(value)));
+            if (isNaN(speed)) return;
+            await ep1.write('hvacFanCtrl', {fanMode: speed});
+            return {state: {fan: 'ON', fan_mode: String(speed)}};
         }
     },
     convertGet: async (entity, key, meta) => {
-        const ep1 = meta.device.getEndpoint(1);
-        if (key === 'fan') await ep1.read('genOnOff', ['onOff']);
-        if (key === 'fan_mode') await ep1.read('genLevelCtrl', ['currentLevel']);
+        await meta.device.getEndpoint(1).read('hvacFanCtrl', ['fanMode']);
     },
 };
 
@@ -236,14 +222,14 @@ export default {
     description: 'Wind Calm ceiling fan with light (ESP32-H2 Zigbee bridge)',
     ota:         true,
 
-    fromZigbee: [fz_fan_state, fz_fan_speed, fz_light_onoff, fz_light_color_temp, fz_timer, fz_beep, fz_direction, fz_power_on_behavior],
+    fromZigbee: [fz_fan_mode, fz_light_onoff, fz_light_color_temp, fz_timer, fz_beep, fz_direction, fz_power_on_behavior],
     toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep],
 
     exposes: [
         exposes.binary('fan', ea.ALL, 'ON', 'OFF')
             .withDescription('Fan on/off'),
         exposes.enum('fan_mode', ea.ALL, ['1', '2', '3', '4', '5', '6'])
-            .withDescription('Fan speed'),
+            .withDescription('Fan speed (1-6); setting any speed turns the fan on'),
         exposes.binary('light', ea.ALL, 'ON', 'OFF')
             .withDescription('Light on/off'),
         exposes.enum('light_color_temp', ea.ALL, ['cool', 'neutral', 'warm'])
@@ -273,10 +259,8 @@ export default {
         const ep4 = device.getEndpoint(4);
         const ep5 = device.getEndpoint(5);
 
-        // EP1: fan on/off + speed
-        await reporting.bind(ep1, coordinatorEndpoint, ['genOnOff', 'genLevelCtrl']);
-        await reporting.onOff(ep1);
-        await reporting.brightness(ep1);
+        // EP1: fan mode (FanControl cluster — no configureReporting, cluster doesn't support it)
+        await reporting.bind(ep1, coordinatorEndpoint, ['hvacFanCtrl']);
 
         // EP2: light on/off + color temp
         await reporting.bind(ep2, coordinatorEndpoint, ['genOnOff', 'lightingColorCtrl']);
@@ -297,8 +281,7 @@ export default {
         await reporting.onOff(ep5);
 
         // Read current states so Z2M cache is populated immediately after configure
-        await ep1.read('genOnOff', ['onOff']);
-        await ep1.read('genLevelCtrl', ['currentLevel']);
+        await ep1.read('hvacFanCtrl', ['fanMode']);
         await ep2.read('genOnOff', ['onOff']);
         await ep2.read('lightingColorCtrl', ['colorTemperature']);
         await ep4.read('genOnOff', ['onOff']);
