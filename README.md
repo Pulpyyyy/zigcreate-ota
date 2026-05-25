@@ -23,7 +23,7 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 
 Toutes les commandes sont disponibles depuis Zigbee2MQTT ou toute box compatible Zigbee :
 
-- **Ventilateur** — marche/arrêt indépendant de la vitesse ; la vitesse peut être réglée de 1 à 6 sans éteindre le ventilateur. Régler la vitesse à 0 éteint le ventilateur.
+- **Ventilateur** — marche/arrêt indépendant de la vitesse ; la vitesse peut être réglée de 1 à 6 sans éteindre le ventilateur. La dernière vitesse est mémorisée et restaurée à la prochaine mise en marche.
 - **Lumière** — marche/arrêt avec mémorisation de l'état ; température de couleur en 3 paliers : Froid (~6 500 K), Neutre (~2 700 K), Chaud (~2 000 K).
 - **Minuterie** — déclenche l'extinction automatique après 1 h, 2 h ou 4 h. Le décompte restant (en minutes) est visible en temps réel dans l'interface. Le préréglage repasse automatiquement à `OFF` lorsque le décompte atteint zéro.
 - **Son (bip)** — active ou désactive le bip sonore émis par l'appareil lors de chaque commande.
@@ -176,7 +176,7 @@ Redémarrez Home Assistant, puis réappairez l'appareil **WIND-CALM (CREATE)**. 
 
 | Endpoint | Type d'entité HA | Fonction |
 |---|---|---|
-| EP1 | Lumière dimmable | Ventilateur — curseur de luminosité = vitesse 1 à 6 |
+| EP1 | Ventilateur natif | Ventilateur — marche/arrêt + vitesse 1 à 6 (cluster FanControl 0x0202) |
 | EP2 | Lumière température couleur | Lumière — 3 paliers : 153 / 370 / 500 mireds |
 | EP4 | Interrupteur | Bip sonore (activation / désactivation) |
 | EP5 | Interrupteur | Direction (éteint = été / allumé = hiver) |
@@ -185,6 +185,5 @@ Redémarrez Home Assistant, puis réappairez l'appareil **WIND-CALM (CREATE)**. 
 
 ### Limitations vs Zigbee2MQTT
 
-- **Ventilateur (EP1)** : ZHA ne peut pas créer une entité `fan` native sans le cluster `FanControl` (0x0202). L'appareil étant piloté via `genLevelCtrl`, il apparaît comme une lumière dimmable — le curseur de luminosité correspond à la vitesse.
 - **Température de couleur** : le slider HA est continu, mais le firmware n'accepte que 3 valeurs (153, 370, 500 mireds).
 - **Mises à jour OTA** : les OTA via ZHA ne sont pas supportées pour ce firmware.
