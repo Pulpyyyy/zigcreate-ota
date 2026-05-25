@@ -6,11 +6,11 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 
 ## Ce que vous pouvez contrôler
 
-| Entité | Contrôles disponibles |
+| Fonction | Contrôles disponibles |
 |---|---|
 | **Ventilateur** | Marche/arrêt · 6 niveaux de vitesse |
 | **Lumière** | Marche/arrêt · Température de couleur (Froid / Neutre / Chaud) |
-| **Minuterie** | Préréglages 1 h / 2 h / 4 h · Décompte visible en temps réel · Réinitialisation automatique à OFF en fin de décompte |
+| **Minuterie** | Préréglages `1h` / `2h` / `4h` · Décompte visible en temps réel · Réinitialisation automatique à `off` en fin de décompte |
 | **Son** | Activation / désactivation du bip de confirmation |
 | **Direction** | Mode Été (brassage vers le bas) · Mode Hiver (remontée d'air chaud) |
 | **Comportement après coupure** | État de la lumière et du son configurables (éteint / allumé / bascule / restauration) |
@@ -25,17 +25,17 @@ Toutes les commandes sont disponibles depuis Zigbee2MQTT ou toute box compatible
 
 - **Ventilateur** — marche/arrêt indépendant de la vitesse ; la vitesse peut être réglée de 1 à 6 sans éteindre le ventilateur. La dernière vitesse est mémorisée et restaurée à la prochaine mise en marche.
 - **Lumière** — marche/arrêt avec mémorisation de l'état ; température de couleur en 3 paliers : Froid (~6 500 K), Neutre (~2 700 K), Chaud (~2 000 K).
-- **Minuterie** — déclenche l'extinction automatique après 1 h, 2 h ou 4 h. Le décompte restant (en minutes) est visible en temps réel dans l'interface. Le préréglage repasse automatiquement à `OFF` lorsque le décompte atteint zéro.
+- **Minuterie** — déclenche l'extinction automatique après 1 h, 2 h ou 4 h. Le décompte restant (en minutes) est visible en temps réel dans l'interface. Le préréglage repasse automatiquement à `off` lorsque le décompte atteint zéro.
 - **Son (bip)** — active ou désactive le bip sonore émis par l'appareil lors de chaque commande.
 - **Direction** — inverse le sens de rotation du ventilateur pour le mode Hiver.
 
 ### Synchronisation en temps réel
 
-Utiliser la télécommande physique (vitesse, on/off, direction…) met à jour l'état dans l'interface domotique instantanément, sans attendre le prochain poll. L'état est également resynchronisé automatiquement à chaque redémarrage du module.
+Utiliser la télécommande physique (vitesse, on/off, direction…) met à jour l'état dans l'interface domotique instantanément. L'état est également resynchronisé automatiquement à chaque redémarrage du module.
 
-### Comportement au démarrage configurable (StartUpOnOff)
+### Comportement après coupure de courant
 
-L'attribut ZCL `StartUpOnOff` est supporté pour la lumière et le son, ce qui permet de définir via l'interface l'état souhaité après une coupure de courant :
+Il est possible de définir ce que fait chaque appareil au redémarrage après une coupure de courant. Ce réglage est disponible séparément pour la **lumière** et le **son** :
 
 | Valeur | Comportement |
 |---|---|
@@ -44,7 +44,7 @@ L'attribut ZCL `StartUpOnOff` est supporté pour la lumière et le son, ce qui p
 | `toggle` | Inverse l'état précédent |
 | `previous` (défaut lumière) | Restaure l'état avant la coupure |
 
-La température de couleur est également restaurée automatiquement à la valeur avant coupure. Par défaut, le bip démarre toujours désactivé.
+La température de couleur de la lumière est également restaurée automatiquement. Par défaut, le bip démarre toujours désactivé.
 
 ### Mises à jour sans fil (OTA)
 
@@ -64,22 +64,20 @@ La LED RGB intégrée indique l'état du module en temps réel :
 | 🔵 Cyan clignotant (0,5 s) | Recherche d'un réseau Zigbee (appairage) |
 | 🟢 3 flashes verts | Appairage réussi |
 | 🔴 Rouge clignotant rapide | Échec de connexion, nouvelle tentative |
-| 🟡 Ambre (1 s on / 2 s off) | Mode dégradé — MCU injoignable |
+| 🟡 Ambre (1 s on / 2 s off) | Mode dégradé — ventilateur injoignable |
 | 🟠 Orange clignotant | Réinitialisation en attente (bouton maintenu) |
 | ⚫ Éteinte | Fonctionnement normal |
 
 ### Réinitialisation
 
 - **Bouton BOOT (5 s)** — maintenir le bouton BOOT appuyé 5 secondes remet l'appareil en configuration d'usine : effacement du réseau Zigbee mémorisé, des préférences et de l'historique de diagnostics. L'appareil redémarre ensuite en mode appairage.
-- **GPIO externe** — un signal bas sur le GPIO de reset externe provoque un redémarrage simple (sans effacement). Le GPIO concerné dépend de la carte — consultez le [guide de câblage](wiring/WIRING.md).
+- **GPIO externe** — un signal bas sur le GPIO de reset externe provoque un redémarrage simple (sans effacement). Consultez le [guide de câblage](wiring/WIRING.md).
 
-### Auto-recovery Zigbee
+### Récupération automatique
 
-Si la stack Zigbee échoue à démarrer 3 fois consécutives (détection de boucle de crash), le module efface automatiquement le stockage Zigbee corrompu et redémarre proprement.
+Si la connexion Zigbee échoue 3 fois de suite au démarrage, le module efface automatiquement sa configuration réseau et redémarre proprement.
 
-### Mode dégradé MCU
-
-Si le MCU Tuya ne répond plus pendant 15 secondes, le module passe en mode dégradé : les commandes Zigbee vers le ventilateur sont ignorées et la LED passe en ambre. Dès que le MCU répond à nouveau, le module reprend son fonctionnement normal automatiquement.
+Si le ventilateur ne répond plus pendant 15 secondes, le module passe en mode dégradé (LED ambre) : les commandes sont suspendues jusqu'au rétablissement de la communication, puis le fonctionnement reprend automatiquement.
 
 ---
 
@@ -94,6 +92,8 @@ Consultez le guide de câblage pour connaître les GPIOs à connecter selon votr
 ## Installation dans Zigbee2MQTT
 
 ### 1. Installer le converter externe
+
+> Un **converter** est un fichier JavaScript qui indique à Zigbee2MQTT comment communiquer avec l'appareil : quelles commandes envoyer, comment interpréter les réponses, et quelles entités afficher dans l'interface. Sans ce fichier, Zigbee2MQTT ne sait pas que l'appareil est un ventilateur avec lumière.
 
 Copiez le fichier `external_converters/create_wind_calm.mjs` dans le dossier `data/external_converters/` de votre installation Zigbee2MQTT (créez le dossier s'il n'existe pas).
 
@@ -110,7 +110,7 @@ external_converters:
   - create_wind_calm.mjs
 ```
 
-Redémarrez Zigbee2MQTT. L'appareil **WIND-CALM (CREATE)** sera reconnu automatiquement à la prochaine association.
+Redémarrez Zigbee2MQTT. L'appareil **WIND-CALM (CREATE)** sera reconnu automatiquement lors du prochain appairage.
 
 ### 2. Ajouter l'icône de l'appareil
 
@@ -145,11 +145,30 @@ ota:
 
 Redémarrez Zigbee2MQTT. Les mises à jour firmware seront proposées automatiquement depuis l'interface.
 
+### Entités disponibles dans Zigbee2MQTT
+
+Après appairage, les entités suivantes apparaissent dans l'interface Z2M :
+
+| Entité | Type | Description |
+|---|---|---|
+| `fan` | Interrupteur | Marche / arrêt du ventilateur |
+| `fan_mode` | Liste | Vitesse du ventilateur (1 à 6) |
+| `light` | Interrupteur | Marche / arrêt de la lumière |
+| `light_color_temp` | Liste | Température de couleur : `cool` / `neutral` / `warm` |
+| `timer_preset` | Liste | Minuterie : `off` / `1h` / `2h` / `4h` |
+| `timer_countdown` | Capteur | Décompte restant en minutes (lecture seule) |
+| `beep` | Interrupteur | Bip sonore actif / silencieux |
+| `direction` | Liste | Sens de rotation : `forward` (été) / `reverse` (hiver) |
+| `power_on_behavior_light` | Liste | Comportement lumière après coupure |
+| `power_on_behavior_beep` | Liste | Comportement bip après coupure |
+
 ---
 
 ## Installation dans ZHA (Home Assistant)
 
-> ZHA est l'intégration Zigbee native de Home Assistant. L'appareil est supporté via un **quirk custom** (équivalent du converter externe pour Z2M).
+> **ZHA** est l'intégration Zigbee native de Home Assistant. Elle permet de piloter des appareils Zigbee directement depuis HA, sans logiciel supplémentaire.
+>
+> Un **quirk** est un fichier Python qui permet à ZHA de reconnaître correctement un appareil non standard et de créer les bonnes entités. Sans ce fichier, ZHA ne sait pas à quoi correspondent les différentes fonctions de l'appareil. C'est l'équivalent du converter pour Zigbee2MQTT.
 
 ### 1. Installer le quirk custom
 
@@ -174,16 +193,18 @@ zha:
 
 Redémarrez Home Assistant, puis réappairez l'appareil **WIND-CALM (CREATE)**. Les entités suivantes seront créées :
 
-| Endpoint | Type d'entité HA | Fonction |
+| Fonction | Type d'entité HA | Description |
 |---|---|---|
-| EP1 | Ventilateur natif | Ventilateur — marche/arrêt + vitesse 1 à 6 (cluster FanControl 0x0202) |
-| EP2 | Lumière température couleur | Lumière — 3 paliers : 153 / 370 / 500 mireds |
-| EP4 | Interrupteur | Bip sonore (activation / désactivation) |
-| EP5 | Interrupteur | Direction (éteint = été / allumé = hiver) |
+| Ventilateur | Ventilateur natif | Marche/arrêt + vitesse 1 à 6 |
+| Lumière | Lumière | Marche/arrêt + température de couleur (Froid / Neutre / Chaud) |
+| Minuterie | — | Pas d'entité ZHA native — disponible uniquement via Zigbee2MQTT |
+| Bip sonore | Interrupteur | Activation / désactivation du bip |
+| Direction | Interrupteur | Éteint = été (brassage vers le bas) · Allumé = hiver (remontée d'air) |
 
-> **Note :** La minuterie (EP3) n'a pas d'entité HA standard. Elle peut être pilotée via le service `zha.issue_zigbee_cluster_command` dans des automatisations (cluster `LevelControl`, commande `moveToLevel`, `level` = durée en minutes : 60, 120 ou 240).
+> **Note minuterie sous ZHA :** La minuterie n'est pas accessible directement dans l'interface ZHA. Pour l'utiliser, passez par **Zigbee2MQTT** ou créez une automatisation HA avancée via le service `zha.issue_zigbee_cluster_command`.
 
 ### Limitations vs Zigbee2MQTT
 
-- **Température de couleur** : le slider HA est continu, mais le firmware n'accepte que 3 valeurs (153, 370, 500 mireds).
-- **Mises à jour OTA** : les OTA via ZHA ne sont pas supportées pour ce firmware.
+- **Température de couleur** : le curseur HA propose une plage continue, mais le firmware n'accepte que 3 valeurs (Froid ~6 500 K, Neutre ~2 700 K, Chaud ~2 000 K).
+- **Minuterie** : non accessible directement dans ZHA (voir note ci-dessus).
+- **Mises à jour OTA** : les mises à jour sans fil via ZHA ne sont pas supportées. Utilisez Zigbee2MQTT pour les OTA.
