@@ -78,6 +78,8 @@ const fz_timer = {
         if (msg.endpoint.ID !== 3) return;
         if (msg.data.hasOwnProperty('currentLevel')) {
             const lvl = msg.data['currentLevel'];
+            // 0xFF = ZCL "undefined" — firmware sends it when no timer is active
+            if (lvl === 255) return {timer_countdown: 0, timer_preset: 'off'};
             const result = {timer_countdown: lvl};
             if (lvl === 0) result.timer_preset = 'off';
             return result;

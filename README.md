@@ -64,7 +64,7 @@ La LED RGB intégrée indique l'état du module en temps réel :
 | 🔵 Cyan clignotant (0,5 s) | Recherche d'un réseau Zigbee (appairage) |
 | 🟢 3 flashes verts | Appairage réussi |
 | 🔴 Rouge clignotant rapide | Échec de connexion, nouvelle tentative |
-| 🟡 Ambre (1 s on / 2 s off) | Mode dégradé — ventilateur injoignable |
+| 🟡 Ambre (1 s on / 2 s off) | Mode dégradé — MU ventilateur injoignable |
 | 🟠 Orange clignotant | Réinitialisation en attente (bouton maintenu) |
 | ⚫ Éteinte | Fonctionnement normal |
 
@@ -75,7 +75,7 @@ La LED RGB intégrée indique l'état du module en temps réel :
 
 ### Récupération automatique
 
-Si la connexion Zigbee échoue 3 fois de suite au démarrage, le module efface automatiquement sa configuration réseau et redémarre proprement.
+Si la connexion Zigbee échoue 3 fois de suite au démarrage, le module efface automatiquement sa configuration réseau corrompue et redémarre proprement.
 
 Si le ventilateur ne répond plus pendant 15 secondes, le module passe en mode dégradé (LED ambre) : les commandes sont suspendues jusqu'au rétablissement de la communication, puis le fonctionnement reprend automatiquement.
 
@@ -93,7 +93,7 @@ Consultez le guide de câblage pour connaître les GPIOs à connecter selon votr
 
 ### 1. Installer le converter externe
 
-> Un **converter** est un fichier JavaScript qui indique à Zigbee2MQTT comment communiquer avec l'appareil : quelles commandes envoyer, comment interpréter les réponses, et quelles entités afficher dans l'interface. Sans ce fichier, Zigbee2MQTT ne sait pas que l'appareil est un ventilateur avec lumière.
+> Un **converter** est un fichier qui indique à Zigbee2MQTT comment communiquer avec l'appareil et quelles entités exposer.
 
 Copiez le fichier `external_converters/create_wind_calm.mjs` dans le dossier `data/external_converters/` de votre installation Zigbee2MQTT (créez le dossier s'il n'existe pas).
 
@@ -166,9 +166,8 @@ Après appairage, les entités suivantes apparaissent dans l'interface Z2M :
 
 ## Installation dans ZHA (Home Assistant)
 
-> **ZHA** est l'intégration Zigbee native de Home Assistant. Elle permet de piloter des appareils Zigbee directement depuis HA, sans logiciel supplémentaire.
->
-> Un **quirk** est un fichier Python qui permet à ZHA de reconnaître correctement un appareil non standard et de créer les bonnes entités. Sans ce fichier, ZHA ne sait pas à quoi correspondent les différentes fonctions de l'appareil. C'est l'équivalent du converter pour Zigbee2MQTT.
+> **ZHA** est l'intégration Zigbee native de Home Assistant.
+> Un **quirk** est un fichier de personnalisation qui permet à ZHA de reconnaître correctement un appareil non standard. C'est l'équivalent du converter pour Zigbee2MQTT.
 
 ### 1. Installer le quirk custom
 
@@ -205,6 +204,6 @@ Redémarrez Home Assistant, puis réappairez l'appareil **WIND-CALM (CREATE)**. 
 
 ### Limitations vs Zigbee2MQTT
 
-- **Température de couleur** : le curseur HA propose une plage continue, mais le firmware n'accepte que 3 valeurs (Froid ~6 500 K, Neutre ~2 700 K, Chaud ~2 000 K).
+- **Température de couleur** : le slider HA propose une plage continue, mais le firmware n'accepte que 3 valeurs (Froid ~6 500 K, Neutre ~2 700 K, Chaud ~2 000 K).
 - **Minuterie** : non accessible directement dans ZHA (voir note ci-dessus).
 - **Mises à jour OTA** : les mises à jour sans fil via ZHA ne sont pas supportées. Utilisez Zigbee2MQTT pour les OTA.
