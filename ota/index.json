@@ -9,9 +9,11 @@
   {
     "manufacturerCode": 20630,
     "imageType": 63848,
-    "fileVersion": 1780135741,
+    "fileVersion": 1780150032,
     "fileSize": 586462,
+    "sha512": "962b72d0facbf73f27f64d98c53f534a3bb29ccbde18390b17ba9417cc49adf7326f0120935d20bfdcb2a6bffc4e1cfc9833b648c913bc341277f39a9b6b6635",
+    "fileName": "zigcreate.ota",
     "force": true,
-    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260530-100901-debug/zigcreate.ota"
+    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260530-140712-debug/zigcreate.ota"
   }
 ]
