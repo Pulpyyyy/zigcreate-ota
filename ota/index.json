@@ -12,11 +12,11 @@
   {
     "manufacturerCode": 20630,
     "imageType": 31080,
-    "fileVersion": 1780166657,
-    "fileSize": 585886,
-    "sha512": "64500f3ba671f015799ba296020a2d5b15f1feee231cc25983759ea27e45bd452b9784d9ba62dccb64fae78f59982953740d164fba5f7cb779ed268f2ee7c8c6",
+    "fileVersion": 1780241690,
+    "fileSize": 591678,
+    "sha512": "83eddb214fb3ffc27ade45c40e3c1dc6ea0ba2e031e295637d8c2235cee20bb6266beedcee547b7bc383dd3b848f6b27ecbd343c2636588a398533abdb36c832",
     "fileName": "zigcreate.ota",
     "force": true,
-    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260530-184417/zigcreate.ota"
+    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260531-153450-esp32h2_zero/zigcreate.ota"
   }
 ]
