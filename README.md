@@ -14,6 +14,7 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 | **Son** | Activation / désactivation du bip de confirmation |
 | **Direction** | Mode Été (brassage vers le bas) · Mode Hiver (remontée d'air chaud) |
 | **Comportement après coupure** | État de la lumière et du son configurables (éteint / allumé / bascule / restauration) |
+| **Température / Humidité** | Lecture de la température et de l'humidité ambiante — nécessite un capteur DHT22 (optionnel, voir [câblage](wiring/WIRING.md#dht22-capteur-de-température--humidité-optionnel)) |
 
 ---
 
@@ -91,119 +92,14 @@ Consultez le guide de câblage pour connaître les GPIOs à connecter selon votr
 
 ## Installation dans Zigbee2MQTT
 
-### 1. Installer le converter externe
+Le converter externe expose toutes les entités de l'appareil dans Z2M : ventilateur, lumière, minuterie, bip, direction, température de couleur, et capteurs DHT22.
 
-> Un **converter** est un fichier qui indique à Zigbee2MQTT comment communiquer avec l'appareil et quelles entités exposer.
-
-Copiez le fichier `external_converters/create_wind_calm.mjs` dans le dossier `data/external_converters/` de votre installation Zigbee2MQTT (créez le dossier s'il n'existe pas).
-
-```
-data/
-└── external_converters/
-    └── create_wind_calm.mjs
-```
-
-Déclarez ensuite le converter dans votre `configuration.yaml` :
-
-```yaml
-external_converters:
-  - create_wind_calm.mjs
-```
-
-Redémarrez Zigbee2MQTT. L'appareil **WIND-CALM (CREATE)** sera reconnu automatiquement lors du prochain appairage.
-
-### 2. Ajouter l'icône de l'appareil
-
-Copiez le fichier `device_icons/windcalm.png` dans le dossier `data/images/devices/` de votre installation Zigbee2MQTT (créez le dossier s'il n'existe pas).
-
-```
-data/
-└── images/
-    └── devices/
-        └── windcalm.png
-```
-
-Ajoutez ensuite l'entrée dans votre `configuration.yaml` :
-
-```yaml
-devices:
-  '0x<ieee_address>':
-    friendly_name: wind_calm
-    icon: 'images/devices/windcalm.png'
-```
-
-> Remplacez `0x<ieee_address>` par l'adresse IEEE réelle de votre appareil, visible dans l'interface Zigbee2MQTT après appairage.
-
-### 3. Activer les mises à jour OTA
-
-Ajoutez l'index OTA de ce dépôt dans votre `configuration.yaml` :
-
-```yaml
-ota:
-  zigbee_ota_override_index_location: https://raw.githubusercontent.com/Pulpyyyy/zigcreate-ota/main/ota/index.json
-```
-
-Redémarrez Zigbee2MQTT. Les mises à jour firmware seront proposées automatiquement depuis l'interface.
-
-### Entités disponibles dans Zigbee2MQTT
-
-Après appairage, les entités suivantes apparaissent dans l'interface Z2M :
-
-| Entité | Type | Description |
-|---|---|---|
-| `fan` | Interrupteur | Marche / arrêt du ventilateur |
-| `fan_mode` | Liste | Vitesse du ventilateur (1 à 6) |
-| `light` | Interrupteur | Marche / arrêt de la lumière |
-| `light_color_temp` | Liste | Température de couleur : `cool` / `neutral` / `warm` |
-| `timer_preset` | Liste | Minuterie : `off` / `1h` / `2h` / `4h` |
-| `timer_countdown` | Capteur | Décompte restant en minutes (lecture seule) |
-| `beep` | Interrupteur | Bip sonore actif / silencieux |
-| `direction` | Liste | Sens de rotation : `forward` (été) / `reverse` (hiver) |
-| `power_on_behavior_light` | Liste | Comportement lumière après coupure |
-| `power_on_behavior_beep` | Liste | Comportement bip après coupure |
+**[→ Guide d'installation Z2M complet](../external_converters/README.md)**
 
 ---
 
 ## Installation dans ZHA (Home Assistant)
 
-> **ZHA** est l'intégration Zigbee native de Home Assistant.
-> Un **quirk** est un fichier de personnalisation qui permet à ZHA de reconnaître correctement un appareil non standard. C'est l'équivalent du converter pour Zigbee2MQTT.
+Le quirk custom permet à ZHA de reconnaître l'appareil et d'exposer les entités natives Home Assistant.
 
-### 1. Installer le quirk custom
-
-Copiez le fichier `zha_quirks/create_wind_calm.py` dans le dossier `/config/custom_zha_quirks/` de votre installation Home Assistant (créez le dossier s'il n'existe pas).
-
-```
-config/
-└── custom_zha_quirks/
-    └── create_wind_calm.py
-```
-
-### 2. Déclarer le dossier de quirks dans Home Assistant
-
-Ajoutez l'entrée suivante dans votre `configuration.yaml` :
-
-```yaml
-zha:
-  custom_quirks_path: /config/custom_zha_quirks
-```
-
-### 3. Réappairer l'appareil
-
-Redémarrez Home Assistant, puis réappairez l'appareil **WIND-CALM (CREATE)**. Les entités suivantes seront créées :
-
-| Fonction | Type d'entité HA | Description |
-|---|---|---|
-| Ventilateur | Ventilateur natif | Marche/arrêt + vitesse 1 à 6 |
-| Lumière | Lumière | Marche/arrêt + température de couleur (Froid / Neutre / Chaud) |
-| Minuterie | — | Pas d'entité ZHA native — disponible uniquement via Zigbee2MQTT |
-| Bip sonore | Interrupteur | Activation / désactivation du bip |
-| Direction | Interrupteur | Éteint = été (brassage vers le bas) · Allumé = hiver (remontée d'air) |
-
-> **Note minuterie sous ZHA :** La minuterie n'est pas accessible directement dans l'interface ZHA. Pour l'utiliser, passez par **Zigbee2MQTT** ou créez une automatisation HA avancée via le service `zha.issue_zigbee_cluster_command`.
-
-### Limitations vs Zigbee2MQTT
-
-- **Température de couleur** : le slider HA propose une plage continue, mais le firmware n'accepte que 3 valeurs (Froid ~6 500 K, Neutre ~2 700 K, Chaud ~2 000 K).
-- **Minuterie** : non accessible directement dans ZHA (voir note ci-dessus).
-- **Mises à jour OTA** : les mises à jour sans fil via ZHA ne sont pas supportées. Utilisez Zigbee2MQTT pour les OTA.
+**[→ Guide d'installation ZHA complet](../zha_quirks/README.md)**
