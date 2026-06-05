@@ -17,6 +17,19 @@ const fz_fan_mode = {
     },
 };
 
+// EP1 also exposes genOnOff (0x0006) alongside FanControl so a switch can be bound
+// directly to the fan. Keep the `fan` state in sync when an on/off report arrives.
+const fz_fan_onoff = {
+    cluster: 'genOnOff',
+    type: ['attributeReport', 'readResponse'],
+    convert: (model, msg, publish, options, meta) => {
+        if (msg.endpoint.ID !== 1) return;
+        if (msg.data.hasOwnProperty('onOff')) {
+            return {fan: msg.data['onOff'] ? 'ON' : 'OFF'};
+        }
+    },
+};
+
 const tz_fan = {
     key: ['fan', 'fan_mode'],
     convertSet: async (entity, key, value, meta) => {
@@ -217,6 +230,38 @@ const tz_power_on_behavior_beep = {
     },
 };
 
+// EP6 — DHT22: temperature (msTemperatureMeasurement) + humidity (msRelativeHumidity)
+const fz_dht22_temp = {
+    cluster: 'msTemperatureMeasurement',
+    type: ['attributeReport', 'readResponse'],
+    convert: (model, msg, publish, options, meta) => {
+        if (msg.endpoint.ID !== 6) return;
+        if (msg.data.hasOwnProperty('measuredValue') && msg.data['measuredValue'] !== 0x8000) {
+            return {temperature: parseFloat((msg.data['measuredValue'] / 100).toFixed(1))};
+        }
+    },
+};
+
+const fz_dht22_hum = {
+    cluster: 'msRelativeHumidity',
+    type: ['attributeReport', 'readResponse'],
+    convert: (model, msg, publish, options, meta) => {
+        if (msg.endpoint.ID !== 6) return;
+        if (msg.data.hasOwnProperty('measuredValue') && msg.data['measuredValue'] !== 0xFFFF) {
+            return {humidity: parseFloat((msg.data['measuredValue'] / 100).toFixed(1))};
+        }
+    },
+};
+
+const tz_dht22 = {
+    key: ['temperature', 'humidity'],
+    convertGet: async (entity, key, meta) => {
+        const ep6 = meta.device.getEndpoint(6);
+        if (key === 'temperature') await ep6.read('msTemperatureMeasurement', ['measuredValue']);
+        if (key === 'humidity')    await ep6.read('msRelativeHumidity', ['measuredValue']);
+    },
+};
+
 export default {
     fingerprint: [{modelID: 'WIND-CALM', manufacturerName: 'CREATE'}],
     model:       'WIND-CALM',
@@ -224,8 +269,8 @@ export default {
     description: 'Wind Calm ceiling fan with light (ESP32-H2 Zigbee bridge)',
     ota:         true,
 
-    fromZigbee: [fz_fan_mode, fz_light_onoff, fz_light_color_temp, fz_timer, fz_beep, fz_direction, fz_power_on_behavior],
-    toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep],
+    fromZigbee: [fz_fan_mode, fz_fan_onoff, fz_light_onoff, fz_light_color_temp, fz_timer, fz_beep, fz_direction, fz_power_on_behavior, fz_dht22_temp, fz_dht22_hum],
+    toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_dht22],
 
     exposes: [
         exposes.binary('fan', ea.ALL, 'ON', 'OFF')
@@ -249,6 +294,10 @@ export default {
             .withDescription('Light power-on behavior'),
         exposes.enum('power_on_behavior_beep', ea.ALL, ['off', 'on', 'toggle', 'previous'])
             .withDescription('Beep power-on behavior'),
+        exposes.numeric('temperature', ea.STATE)
+            .withUnit('°C').withDescription('Temperature'),
+        exposes.numeric('humidity', ea.STATE)
+            .withUnit('%').withDescription('Relative humidity'),
     ],
 
     endpoint: (device) => ({}),
@@ -262,7 +311,9 @@ export default {
         const ep5 = device.getEndpoint(5);
 
         // EP1: fan mode (FanControl cluster — no configureReporting, cluster doesn't support it)
-        await reporting.bind(ep1, coordinatorEndpoint, ['hvacFanCtrl']);
+        // plus genOnOff (0x0006) so the fan can be controlled/bound via plain on/off.
+        await reporting.bind(ep1, coordinatorEndpoint, ['hvacFanCtrl', 'genOnOff']);
+        await reporting.onOff(ep1);
 
         // EP2: light on/off + color temp
         await reporting.bind(ep2, coordinatorEndpoint, ['genOnOff', 'lightingColorCtrl']);
@@ -284,6 +335,7 @@ export default {
 
         // Read current states so Z2M cache is populated immediately after configure
         await ep1.read('hvacFanCtrl', ['fanMode']);
+        await ep1.read('genOnOff', ['onOff']);
         await ep2.read('genOnOff', ['onOff']);
         await ep2.read('lightingColorCtrl', ['colorTemperature']);
         await ep4.read('genOnOff', ['onOff']);
@@ -293,5 +345,17 @@ export default {
         // Read StartUpOnOff for light and beep (non-reportable, read on configure)
         await ep2.read('genOnOff', ['startUpOnOff']);
         await ep4.read('genOnOff', ['startUpOnOff']);
+
+        // EP6: DHT22 temperature + humidity (disabled by default, only bound/configured if EP exists)
+        const ep6 = device.getEndpoint(6);
+        if (ep6) {
+            await reporting.bind(ep6, coordinatorEndpoint, ['msTemperatureMeasurement', 'msRelativeHumidity']);
+            await ep6.configureReporting('msTemperatureMeasurement', [{
+                attribute: 'measuredValue', minimumReportInterval: 60, maximumReportInterval: 300, reportableChange: 50,
+            }]);
+            await ep6.configureReporting('msRelativeHumidity', [{
+                attribute: 'measuredValue', minimumReportInterval: 60, maximumReportInterval: 300, reportableChange: 100,
+            }]);
+        }
     },
 };
