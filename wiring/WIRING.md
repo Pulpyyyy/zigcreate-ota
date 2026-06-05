@@ -35,7 +35,7 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
   0                              22
   1                              14
   2    ◄── EXT_RESET             13
-  3                              12
+  3    ◄── DHT22 DATA             12
   4    ──► TUYA TX               11
   5    ◄── TUYA RX               10
 ```
@@ -49,6 +49,7 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
 | LED RGB (WS2812) | GPIO8 | Pad LOG (castellé) | Interne, ne pas câbler |
 | Bouton BOOT / Reset Zigbee | GPIO9 | Pad castellé bas | En fonctionnement normal : maintenir 5 s pour reset usine. Pour le flash : voir [FLASH.md](../flash/FLASH.md) |
 | Reset externe (actif bas) | GPIO2 | En-tête gauche, 7e | Redémarrage software |
+| DHT22 DATA (optionnel) | GPIO3 | En-tête gauche, 8e | Voir section [DHT22](#dht22-capteur-de-température--humidité-optionnel) |
 | USB D+ | GPIO27 | Pad castellé bas | Réservé USB, ne pas utiliser |
 | USB D- | GPIO26 | Pad castellé bas | Réservé USB, ne pas utiliser |
 
@@ -84,5 +85,43 @@ Un niveau bas (GND) bref sur ce GPIO provoque un redémarrage software, sans eff
 | Carte | GPIO | Broche en-tête |
 |---|---|---|
 | ESP32-H2-Zero | GPIO2 | En-tête gauche, 7e |
+| ESP32-H2 Super Mini | GPIO14 | |
 
 > Pour un reset usine complet (effacement réseau + préférences), utiliser le bouton BOOT maintenu **5 secondes**.
+
+---
+
+## DHT22 — Capteur de température / humidité (optionnel)
+
+Le firmware intègre la prise en charge d'un capteur **DHT22** pour reporter la température et l'humidité ambiantes via Zigbee. Ce capteur est **entièrement optionnel** : sans lui, toutes les autres fonctions restent opérationnelles.
+
+### Module PCB recommandé
+
+> Utiliser de préférence un **module DHT22 sur PCB** (3 broches : VCC, DATA, GND). Ces modules intègrent la résistance de pull-up et le condensateur de découplage — aucun composant externe à ajouter.
+>
+> Le capteur DHT22 nu (4 broches) nécessite l'ajout d'une résistance de 4,7 kΩ à 10 kΩ entre VCC et DATA, et d'un condensateur 100 nF entre VCC et GND.
+
+### Connexions
+
+| Signal | Module DHT22 | ESP32-H2 | Remarque |
+|---|---|---|---|
+| VCC | VCC | **3,3 V** | Ne pas alimenter en 5 V |
+| GND | GND | GND | Masse commune |
+| DATA | DATA | GPIO selon carte | Voir tableau ci-dessous |
+
+| Carte | GPIO DATA DHT22 | Broche en-tête |
+|---|---|---|
+| ESP32-H2-Zero | GPIO3 | En-tête gauche, 8e |
+| ESP32-H2 Super Mini | GPIO2 | |
+
+### Entités Zigbee générées
+
+Une fois câblé, le firmware reporte automatiquement la température et l'humidité toutes les 60 secondes :
+
+| Entité | Cluster ZCL | Précision |
+|---|---|---|
+| `temperature` | TemperatureMeasurement (0x0402) | 0,1 °C |
+| `humidity` | RelativeHumidity (0x0405) | 0,1 % |
+
+> Sous **Zigbee2MQTT**, ces entités sont **désactivées par défaut** — les activer manuellement dans l'interface HA si souhaité.
+> Sous **ZHA**, les entités température et humidité sont créées actives.
