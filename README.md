@@ -14,7 +14,7 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 | **Son** | Activation / désactivation du bip de confirmation |
 | **Direction** | Mode Été (brassage vers le bas) · Mode Hiver (remontée d'air chaud) |
 | **Comportement après coupure** | État de la lumière et du son configurables (éteint / allumé / bascule / restauration) |
-| **Température / Humidité** | Lecture de la température et de l'humidité ambiante — nécessite un capteur DHT22 (optionnel, voir [câblage](wiring/WIRING.md#dht22-capteur-de-température--humidité-optionnel)) |
+| **Température / Humidité** | Lecture de la température et de l'humidité ambiante — nécessite un capteur DHT11/DHT22 (optionnel, voir [câblage](wiring/WIRING.md#capteur-de-température--humidité-optionnel)) |
 
 ---
 
@@ -92,7 +92,7 @@ Consultez le guide de câblage pour connaître les GPIOs à connecter selon votr
 
 ## Installation dans Zigbee2MQTT
 
-Le converter externe expose toutes les entités de l'appareil dans Z2M : ventilateur, lumière, minuterie, bip, direction, température de couleur, et capteurs DHT22.
+Le converter externe expose toutes les entités de l'appareil dans Z2M : ventilateur, lumière, minuterie, bip, direction, température de couleur, et capteurs de température / humidité.
 
 **[→ Guide d'installation Z2M complet](../external_converters/README.md)**
 

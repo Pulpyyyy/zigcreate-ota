@@ -51,8 +51,9 @@ La LED clignote en **cyan** pendant la recherche de réseau, puis effectue **3 f
 | Minuterie | — | Pas d'entité ZHA native — disponible uniquement via Zigbee2MQTT |
 | Bip sonore | Interrupteur | Activation / désactivation du bip |
 | Direction | Interrupteur | Éteint = été (brassage vers le bas) · Allumé = hiver (remontée d'air) |
-| Température | Capteur | Température ambiante (°C) — requiert DHT22 |
-| Humidité | Capteur | Humidité relative (%) — requiert DHT22 |
+| Température | Capteur | Température ambiante (°C) — requiert un capteur DHT11/DHT22 |
+| Humidité | Capteur | Humidité relative (%) — requiert un capteur DHT11/DHT22 |
+| Firmware debug | Interrupteur | Bascule OTA release ⇄ debug (Éteint = release, Allumé = debug) ; l'appareil redémarre et télécharge l'image correspondante. Maintenance/dev. |
 
 ![Page de l'appareil dans Home Assistant avec toutes ses entités](img/zha_device_entities.png)
 

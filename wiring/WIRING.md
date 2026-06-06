@@ -35,7 +35,7 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
   0                              22
   1                              14
   2    ◄── EXT_RESET             13
-  3    ◄── DHT22 DATA             12
+  3    ◄── DHTxx DATA             12
   4    ──► TUYA TX               11
   5    ◄── TUYA RX               10
 ```
@@ -49,7 +49,7 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
 | LED RGB (WS2812) | GPIO8 | Pad LOG (castellé) | Interne, ne pas câbler |
 | Bouton BOOT / Reset Zigbee | GPIO9 | Pad castellé bas | En fonctionnement normal : maintenir 5 s pour reset usine. Pour le flash : voir [FLASH.md](../flash/FLASH.md) |
 | Reset externe (actif bas) | GPIO2 | En-tête gauche, 7e | Redémarrage software |
-| DHT22 DATA (optionnel) | GPIO3 | En-tête gauche, 8e | Voir section [DHT22](#dht22-capteur-de-température--humidité-optionnel) |
+| Capteur T°/HR DATA (optionnel) | GPIO3 | En-tête gauche, 8e | Voir section [Capteur T°/HR](#capteur-de-température--humidité-optionnel) |
 | USB D+ | GPIO27 | Pad castellé bas | Réservé USB, ne pas utiliser |
 | USB D- | GPIO26 | Pad castellé bas | Réservé USB, ne pas utiliser |
 
@@ -91,25 +91,27 @@ Un niveau bas (GND) bref sur ce GPIO provoque un redémarrage software, sans eff
 
 ---
 
-## DHT22 — Capteur de température / humidité (optionnel)
+## Capteur de température / humidité (optionnel)
 
-Le firmware intègre la prise en charge d'un capteur **DHT22** pour reporter la température et l'humidité ambiantes via Zigbee. Ce capteur est **entièrement optionnel** : sans lui, toutes les autres fonctions restent opérationnelles.
+Le firmware intègre la prise en charge d'un capteur **DHT22** ou **DHT11** pour reporter la température et l'humidité ambiantes via Zigbee. Ce capteur est **entièrement optionnel** : sans lui, toutes les autres fonctions restent opérationnelles.
+
+> **DHT11 ou DHT22 ?** Le câblage est identique (même protocole 1 fil) et le firmware **détecte automatiquement** le capteur branché (DHT22, DHT11 ou aucun) — rien à configurer. Au démarrage il sonde les deux familles et verrouille celle qui répond ; si aucun capteur n'est présent, la tâche se contente d'avertir sans perturber le reste. Le DHT22 est plus précis et couvre les températures négatives ; le DHT11 est moins cher mais limité (0–50 °C, ±2 °C, ±5 % HR, résolution 1°).
 
 ### Module PCB recommandé
 
-> Utiliser de préférence un **module DHT22 sur PCB** (3 broches : VCC, DATA, GND). Ces modules intègrent la résistance de pull-up et le condensateur de découplage — aucun composant externe à ajouter.
+> Utiliser de préférence un **module sur PCB** (3 broches : VCC, DATA, GND). Ces modules intègrent la résistance de pull-up et le condensateur de découplage — aucun composant externe à ajouter.
 >
-> Le capteur DHT22 nu (4 broches) nécessite l'ajout d'une résistance de 4,7 kΩ à 10 kΩ entre VCC et DATA, et d'un condensateur 100 nF entre VCC et GND.
+> Le capteur nu (4 broches) nécessite l'ajout d'une résistance de 4,7 kΩ à 10 kΩ entre VCC et DATA, et d'un condensateur 100 nF entre VCC et GND.
 
 ### Connexions
 
-| Signal | Module DHT22 | ESP32-H2 | Remarque |
+| Signal | Module capteur | ESP32-H2 | Remarque |
 |---|---|---|---|
 | VCC | VCC | **3,3 V** | Ne pas alimenter en 5 V |
 | GND | GND | GND | Masse commune |
 | DATA | DATA | GPIO selon carte | Voir tableau ci-dessous |
 
-| Carte | GPIO DATA DHT22 | Broche en-tête |
+| Carte | GPIO DATA capteur | Broche en-tête |
 |---|---|---|
 | ESP32-H2-Zero | GPIO3 | En-tête gauche, 8e |
 | ESP32-H2 Super Mini | GPIO2 | |

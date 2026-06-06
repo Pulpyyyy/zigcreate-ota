@@ -13,6 +13,8 @@ Mapping des endpoints :
   EP3 — Minuterie    : LevelControl (niveau = minutes restantes, 0-240)
   EP4 — Bip          : OnOff + StartUpOnOff (0x4003)
   EP5 — Direction    : OnOff (OFF=été/forward, ON=hiver/reverse)
+  EP6 — Capteur      : TemperatureMeasurement + RelativeHumidity (DHT11/DHT22, optionnel)
+  EP7 — Firmware OTA : OnOff (OFF=build release, ON=build debug — bascule + reboot)
 
 Notes :
   - EP1 expose une entité fan native HA grâce au cluster FanControl 0x0202.
@@ -127,7 +129,7 @@ class CreateWindCalm(CustomDevice):
                 OUTPUT_CLUSTERS: [],
             },
 
-            # --- EP6 : DHT22 — température + humidité ---
+            # --- EP6 : capteur température + humidité (DHT11/DHT22) ---
             # TemperatureMeasurement → measuredValue (0.01 °C)
             # RelativeHumidity       → measuredValue (0.01 %)
             # HA : entités sensor désactivées par défaut
@@ -137,6 +139,19 @@ class CreateWindCalm(CustomDevice):
                 INPUT_CLUSTERS: [
                     TemperatureMeasurement.cluster_id,  # 0x0402
                     RelativeHumidity.cluster_id,        # 0x0405
+                ],
+                OUTPUT_CLUSTERS: [],
+            },
+
+            # --- EP7 : Bascule firmware OTA ---
+            # OnOff → OFF=canal release / ON=canal debug.
+            # Basculer fait persister le choix et redémarre l'appareil, qui télécharge
+            # alors le firmware du canal correspondant. Contrôle de maintenance.
+            7: {
+                PROFILE_ID: zha.PROFILE_ID,
+                DEVICE_TYPE: zha.DeviceType.ON_OFF_SWITCH,
+                INPUT_CLUSTERS: [
+                    OnOff.cluster_id,          # 0x0006
                 ],
                 OUTPUT_CLUSTERS: [],
             },

@@ -193,6 +193,32 @@ const tz_direction = {
     },
 };
 
+// EP7 — Debug firmware OTA channel switch (OFF=release build, ON=debug build).
+// Toggling makes the device persist the choice and reboot; it then pulls the matching
+// firmware from the other OTA channel. Maintenance/development control.
+const fz_debug_firmware = {
+    cluster: 'genOnOff',
+    type: ['attributeReport', 'readResponse'],
+    convert: (model, msg, publish, options, meta) => {
+        if (msg.endpoint.ID !== 7) return;
+        if (msg.data.hasOwnProperty('onOff')) {
+            return {debug_firmware: msg.data['onOff'] ? 'ON' : 'OFF'};
+        }
+    },
+};
+const tz_debug_firmware = {
+    key: ['debug_firmware'],
+    convertSet: async (entity, key, value, meta) => {
+        const ep7 = meta.device.getEndpoint(7);
+        const on = String(value).toUpperCase() === 'ON';
+        await ep7.command('genOnOff', on ? 'on' : 'off', {});
+        return {state: {debug_firmware: on ? 'ON' : 'OFF'}};
+    },
+    convertGet: async (entity, key, meta) => {
+        await meta.device.getEndpoint(7).read('genOnOff', ['onOff']);
+    },
+};
+
 // EP2/EP4 — Power-on behavior: StartUpOnOff ZCL attr (0x4003)
 // 0=off, 1=on, 2=toggle, 0xFF=previous (restore last saved state)
 const POB_MAP  = {off: 0, on: 1, toggle: 2, previous: 255};
@@ -230,8 +256,8 @@ const tz_power_on_behavior_beep = {
     },
 };
 
-// EP6 — DHT22: temperature (msTemperatureMeasurement) + humidity (msRelativeHumidity)
-const fz_dht22_temp = {
+// EP6 — Temp/Hum (DHT11/DHT22): temperature (msTemperatureMeasurement) + humidity (msRelativeHumidity)
+const fz_temperature = {
     cluster: 'msTemperatureMeasurement',
     type: ['attributeReport', 'readResponse'],
     convert: (model, msg, publish, options, meta) => {
@@ -242,7 +268,7 @@ const fz_dht22_temp = {
     },
 };
 
-const fz_dht22_hum = {
+const fz_humidity = {
     cluster: 'msRelativeHumidity',
     type: ['attributeReport', 'readResponse'],
     convert: (model, msg, publish, options, meta) => {
@@ -253,7 +279,7 @@ const fz_dht22_hum = {
     },
 };
 
-const tz_dht22 = {
+const tz_temp_hum = {
     key: ['temperature', 'humidity'],
     convertGet: async (entity, key, meta) => {
         const ep6 = meta.device.getEndpoint(6);
@@ -269,8 +295,8 @@ export default {
     description: 'Wind Calm ceiling fan with light (ESP32-H2 Zigbee bridge)',
     ota:         true,
 
-    fromZigbee: [fz_fan_mode, fz_fan_onoff, fz_light_onoff, fz_light_color_temp, fz_timer, fz_beep, fz_direction, fz_power_on_behavior, fz_dht22_temp, fz_dht22_hum],
-    toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_dht22],
+    fromZigbee: [fz_fan_mode, fz_fan_onoff, fz_light_onoff, fz_light_color_temp, fz_timer, fz_beep, fz_direction, fz_power_on_behavior, fz_temperature, fz_humidity, fz_debug_firmware],
+    toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_temp_hum, tz_debug_firmware],
 
     exposes: [
         exposes.binary('fan', ea.ALL, 'ON', 'OFF')
@@ -298,6 +324,11 @@ export default {
             .withUnit('°C').withDescription('Temperature'),
         exposes.numeric('humidity', ea.STATE)
             .withUnit('%').withDescription('Relative humidity'),
+        exposes.binary('debug_firmware', ea.ALL, 'ON', 'OFF')
+            .withCategory('config')
+            .withDescription('Swap the installed firmware over OTA: ON = debug build, OFF = release build. ' +
+                             'The device persists the choice, reboots, and pulls the matching image from the other ' +
+                             'OTA channel. For development/diagnostics — not a fan function.'),
     ],
 
     endpoint: (device) => ({}),
@@ -333,6 +364,14 @@ export default {
         await reporting.bind(ep5, coordinatorEndpoint, ['genOnOff']);
         await reporting.onOff(ep5);
 
+        // EP7: debug firmware OTA channel switch (guarded — absent on older firmware)
+        const ep7 = device.getEndpoint(7);
+        if (ep7) {
+            await reporting.bind(ep7, coordinatorEndpoint, ['genOnOff']);
+            await reporting.onOff(ep7);
+            await ep7.read('genOnOff', ['onOff']);
+        }
+
         // Read current states so Z2M cache is populated immediately after configure
         await ep1.read('hvacFanCtrl', ['fanMode']);
         await ep1.read('genOnOff', ['onOff']);
@@ -346,7 +385,7 @@ export default {
         await ep2.read('genOnOff', ['startUpOnOff']);
         await ep4.read('genOnOff', ['startUpOnOff']);
 
-        // EP6: DHT22 temperature + humidity (disabled by default, only bound/configured if EP exists)
+        // EP6: temperature + humidity (DHT11/DHT22, disabled by default, only bound/configured if EP exists)
         const ep6 = device.getEndpoint(6);
         if (ep6) {
             await reporting.bind(ep6, coordinatorEndpoint, ['msTemperatureMeasurement', 'msRelativeHumidity']);

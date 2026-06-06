@@ -92,9 +92,12 @@ La LED clignote en **cyan** pendant la recherche de réseau, puis effectue **3 f
 | `direction` | Liste | Sens de rotation : `forward` (été) / `reverse` (hiver) |
 | `power_on_behavior_light` | Liste | Comportement lumière après coupure |
 | `power_on_behavior_beep` | Liste | Comportement bip après coupure |
-| `temperature` | Capteur | Température ambiante (°C) — **désactivée par défaut** · requiert DHT22 |
-| `humidity` | Capteur | Humidité relative (%) — **désactivée par défaut** · requiert DHT22 |
+| `temperature` | Capteur | Température ambiante (°C) — **désactivée par défaut** · requiert un capteur DHT11/DHT22 |
+| `humidity` | Capteur | Humidité relative (%) — **désactivée par défaut** · requiert un capteur DHT11/DHT22 |
+| `debug_firmware` | Interrupteur (config) | Bascule OTA du firmware : `ON` = build debug, `OFF` = build release. L'appareil persiste le choix, redémarre et télécharge l'image du canal correspondant. Outil de maintenance/dev. |
 
-> Les entités `temperature` et `humidity` nécessitent un capteur DHT22 câblé sur le module (voir [câblage](../docs/wiring/WIRING.md#dht22-capteur-de-température--humidité-optionnel)).
+> Les entités `temperature` et `humidity` nécessitent un capteur DHT11/DHT22 câblé sur le module (voir [câblage](../docs/wiring/WIRING.md#capteur-de-température--humidité-optionnel)).
+>
+> L'interrupteur `debug_firmware` permet de passer un appareil déployé du firmware release au firmware debug (et inversement) **entièrement par OTA**, sans repasser par l'USB. Les deux canaux (release / debug) sont publiés automatiquement par la CI ; basculer l'interrupteur fait que l'appareil réclame l'image de l'autre canal au prochain cycle OTA.
 
 ![Toutes les entités dans l'interface Z2M](img/z2m_entities.png)
