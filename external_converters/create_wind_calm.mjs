@@ -92,9 +92,23 @@ const fz_timer = {
         if (msg.data.hasOwnProperty('currentLevel')) {
             const lvl = msg.data['currentLevel'];
             // 0xFF = ZCL "undefined" — firmware sends it when no timer is active
-            if (lvl === 255) return {timer_countdown: 0, timer_preset: 'off'};
+            if (lvl === 255 || lvl === 0) return {timer_countdown: 0, timer_preset: 'off'};
             const result = {timer_countdown: lvl};
-            if (lvl === 0) result.timer_preset = 'off';
+            // Re-derive the preset on any *deliberate* change — a fresh timer or a
+            // switch to a different one — but NOT on the natural minute-by-minute
+            // tick-down, so a 240-min timer stays '4h' all the way down.
+            //   • rising  (lvl > prev):        new timer started or extended
+            //   • big drop (prev - lvl > TOL): switched to a shorter timer — the
+            //                                  countdown jumps straight to the new
+            //                                  duration instead of elapsing minute-by-minute
+            // A normal tick is ~-1/report (firmware queries the MCU every 60 s), so a
+            // drop beyond a few minutes can only be a re-set, not elapsed time.
+            const TICK_TOL = 3;
+            const prev = meta.state.timer_countdown ?? 0;
+            if (lvl > prev || prev - lvl > TICK_TOL) {
+                // First report after a set is ~the full duration → nearest preset.
+                result.timer_preset = lvl <= 90 ? '1h' : lvl <= 180 ? '2h' : '4h';
+            }
             return result;
         }
     },
