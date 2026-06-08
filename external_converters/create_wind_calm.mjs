@@ -127,35 +127,37 @@ const tz_timer = {
     },
 };
 
-// EP2 — Color temperature: 3 Tuya levels ↔ ZCL mireds
-// cool=153 mir (Tuya 0), neutral=370 mir (Tuya 500), warm=500 mir (Tuya 1000)
-const COLOR_TEMP = {cool: 153, neutral: 370, warm: 500};
+// EP2 — Colour temperature: CYCLE-ONLY on this hardware.
+// The MCU's color_temp DP is echo-only — it reports back whatever value was last written,
+// DECOUPLED from the real LED colour (the same physical "warm" reported 0 then 500 during
+// debugging). The physical colour can only be advanced one step at a time, exactly like the
+// remote: cold→neutral→warm→… An absolute colour CANNOT be selected and the reported colour
+// is NOT reliable. So we expose a single "step" trigger instead of cold/neutral/warm presets
+// (which were misleading). See main/zigbee_device.c for the full explanation.
+// How long the color_step switch stays visually ON before springing back to OFF.
+const COLOR_STEP_RESET_MS = 1000;
 
-const fz_light_color_temp = {
-    cluster: 'lightingColorCtrl',
-    type: ['attributeReport', 'readResponse'],
-    convert: (model, msg, publish, options, meta) => {
-        if (msg.endpoint.ID !== 2) return;
-        const mir = msg.data['colorTemperature'];
-        if (mir == null) return;
-        const preset = mir <= 260 ? 'cool' : mir <= 435 ? 'neutral' : 'warm';
-        return {light_color_temp: preset};
-    },
-};
-const tz_light_color_temp = {
-    key: ['light_color_temp'],
+const tz_color_step = {
+    key: ['color_step'],
     convertSet: async (entity, key, value, meta) => {
-        const mireds = COLOR_TEMP[value] ?? 153;
+        // Momentary "button" built from a switch (Z2M has no native button expose): turning it
+        // ON advances the lamp ONE colour step. Turning it OFF does nothing.
+        if (String(value).toUpperCase() !== 'ON') return {state: {color_step: 'OFF'}};
         const ep2 = meta.device.getEndpoint(2);
-        // colorTemperature (0x0007) is read-only in ZCL — must use the moveToColorTemp
-        // command (0x0A) so the firmware's command callback fires instead of Write Attribute.
-        await ep2.command('lightingColorCtrl', 'moveToColorTemp', {colortemp: mireds, transtime: 0});
-        // Firmware auto-turns on the light when CT is set while off — reflect it optimistically.
-        return {state: {light_color_temp: value, light: 'ON'}};
-    },
-    convertGet: async (entity, key, meta) => {
-        const ep2 = meta.device.getEndpoint(2);
-        await ep2.read('lightingColorCtrl', ['colorTemperature']);
+        // The firmware ignores the requested mireds and just steps; moveToColorTemp is used so
+        // the firmware's command path fires (a plain colorTemperature Write Attribute is
+        // read-only/ignored in ZCL).
+        await ep2.command('lightingColorCtrl', 'moveToColorTemp', {colortemp: 250, transtime: 0});
+        // Spring back to OFF for a momentary feel. To make the ON state actually VISIBLE in HA
+        // (the switch is non-optimistic), we must publish ON now and OFF later — a single
+        // blocking await would only ever publish the final OFF. meta.publish does the deferred
+        // OFF. Fallback (older Z2M without meta.publish): report OFF immediately — reliable
+        // one-tap-per-step, just without the brief ON indication.
+        if (typeof meta.publish === 'function') {
+            setTimeout(() => meta.publish({color_step: 'OFF'}), COLOR_STEP_RESET_MS);
+            return {state: {color_step: 'ON'}};
+        }
+        return {state: {color_step: 'OFF'}};
     },
 };
 
@@ -330,16 +332,19 @@ export default {
     description: 'Wind Calm ceiling fan with light (ESP32-H2 Zigbee bridge)',
     ota:         true,
 
-    fromZigbee: [fz_fan_mode, fz_fan_onoff, fz_light_onoff, fz_light_color_temp, fz_timer, fz_beep, fz_direction, fz_power_on_behavior, fz_temperature, fz_humidity, fz_debug_firmware],
-    toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_temp_hum, tz_debug_firmware],
+    fromZigbee: [fz_fan_mode, fz_fan_onoff, fz_light_onoff, fz_timer, fz_beep, fz_direction, fz_power_on_behavior, fz_temperature, fz_humidity, fz_debug_firmware],
+    toZigbee:   [tz_light_onoff, tz_fan, tz_color_step, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_temp_hum, tz_debug_firmware],
 
     exposes: [
         // HA `fan` domain entity (on/off + speed). Built above with withSpeed.
         fanExpose,
         // HA `light` domain entity (on/off). Property renamed to 'light' above.
         lightExpose,
-        exposes.enum('light_color_temp', ea.ALL, ['cool', 'neutral', 'warm'])
-            .withDescription('Color temperature (cool=6500K, neutral=2700K, warm=2000K)'),
+        exposes.binary('color_step', ea.STATE_SET, 'ON', 'OFF')
+            .withDescription('Colour temperature — momentary: switch ON to advance ONE step ' +
+                             '(cold→neutral→warm→…); it springs back to OFF automatically. This ' +
+                             'lamp can only cycle — an absolute colour cannot be selected and ' +
+                             'there is no reliable colour state.'),
         exposes.enum('timer_preset', ea.STATE_SET, ['off', '1h', '2h', '4h'])
             .withDescription('Timer setting; auto-resets to OFF when countdown reaches 0'),
         exposes.numeric('timer_countdown', ea.STATE)

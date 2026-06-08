@@ -85,7 +85,7 @@ La LED clignote en **cyan** pendant la recherche de réseau, puis effectue **3 f
 | `fan` | Interrupteur | Marche / arrêt du ventilateur |
 | `fan_mode` | Liste | Vitesse du ventilateur (1 à 6) |
 | `light` | Interrupteur | Marche / arrêt de la lumière |
-| `light_color_temp` | Liste | Température de couleur : `cool` / `neutral` / `warm` |
+| `color_step` | Interrupteur momentané | Température de couleur — **cycle uniquement** : passer sur **ON** avance d'un cran (froid→neutre→chaud→…) puis revient à **OFF** automatiquement. Cette ampoule ne permet PAS de choisir une couleur absolue, et il n'y a pas d'état couleur fiable. |
 | `timer_preset` | Liste | Minuterie : `off` / `1h` / `2h` / `4h` |
 | `timer_countdown` | Capteur | Décompte restant en minutes (lecture seule) |
 | `beep` | Interrupteur | Bip sonore actif / silencieux |

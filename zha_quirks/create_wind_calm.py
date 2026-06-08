@@ -2,7 +2,8 @@
 
 Quirks V2 — feature-parity (best effort) with the Zigbee2MQTT converter:
   • EP1 Fan      : native fan entity (FanControl) + a `fan_speed` number 1-6
-  • EP2 Light    : native light entity + a `color_preset` select (cool/neutral/warm)
+  • EP2 Light    : native light entity + a `color_step` button (cycle-only: each press
+                   advances one colour step — this lamp can't set an absolute colour)
   • EP3 Timer    : `timer_preset` select (off/1h/2h/4h) + `timer_countdown` sensor
   • EP4/5/7      : OnOff switches (beep / direction / debug firmware)
   • EP6          : temperature + humidity sensors (DHT11/DHT22, optional)
@@ -18,10 +19,12 @@ LIMITES vs le converter Z2M (irréductibles en ZHA) :
   - `timer_preset` n'a PAS la logique "sticky" du converter : le preset est dérivé
     par plage du temps restant, donc un timer 4h se relabellise 2h puis 1h en
     décomptant (impossible à reproduire sans logique stateful type fz/tz).
-  - `color_preset` / `timer_preset` / `fan_speed` sont des attributs synthétiques :
-    ils se remplissent quand l'attribut réel (colorTemperature / currentLevel /
-    fanMode) est lu ou reporté. Le report nécessite le firmware avec les correctifs
-    de reportabilité (fanMode + colorTemperature).
+  - `timer_preset` / `fan_speed` sont des attributs synthétiques : ils se remplissent
+    quand l'attribut réel (currentLevel / fanMode) est lu ou reporté. Le report nécessite
+    le firmware avec les correctifs de reportabilité (fanMode).
+  - `color_step` est un bouton poussoir sans état (matériel cycle-only) : chaque appui avance
+    d'un cran (cold→neutral→warm→…). La couleur ne peut PAS être choisie en absolu et aucun
+    état couleur fiable n'existe (le DP couleur du MCU est découplé de la couleur réelle).
 
 NOTE: testé uniquement à la lecture du code — à valider sur une install ZHA réelle.
 """
@@ -36,58 +39,32 @@ from zigpy.zcl.clusters.lighting import ColorControl
 from zigpy.zcl.foundation import ZCLAttributeDef
 
 
-# ── Color temperature: 3 firmware steps ↔ mireds ─────────────────────────────
-# cool=153 mir (Tuya 0) · neutral=370 mir (Tuya 500) · warm=500 mir (Tuya 1000)
-class ColorTempPreset(t.enum8):
-    cool = 0x00
-    neutral = 0x01
-    warm = 0x02
-
-
-_PRESET_TO_MIREDS = {
-    ColorTempPreset.cool: 153,
-    ColorTempPreset.neutral: 370,
-    ColorTempPreset.warm: 500,
-}
-
-
-def _mireds_to_preset(m: int) -> ColorTempPreset:
-    if m <= 260:
-        return ColorTempPreset.cool
-    if m <= 435:
-        return ColorTempPreset.neutral
-    return ColorTempPreset.warm
-
-
+# ── Color temperature: CYCLE-ONLY ────────────────────────────────────────────
+# This lamp's colour can NOT be set to an absolute value. The MCU's color_temp DP is
+# echo-only — it reports back whatever value was last written, DECOUPLED from the real LED
+# colour — and the physical colour only advances one step at a time, exactly like the
+# remote: cold→neutral→warm→… (established empirically). So instead of cold/neutral/warm
+# presets (which were misleading) we expose a single `color_step` button: each press sends
+# one moveToColorTemp, which the firmware turns into a one-step advance. The written value is
+# meaningless (just a momentary trigger). See main/zigbee_device.c for the full explanation.
 class CreateColorControl(CustomCluster, ColorControl):
-    """ColorControl exposing a synthetic 3-step `color_preset`.
-
-    Read  : colorTemperature (0x0007) update → derive cool/neutral/warm.
-    Write : color_preset → moveToColorTemp(nearest mireds) (the firmware's command
-            callback fires on moveToColorTemp, not on a Write Attribute).
-    """
+    """ColorControl exposing a single `color_step` advance trigger (cycle-only HW)."""
 
     class AttributeDefs(ColorControl.AttributeDefs):
-        color_preset = ZCLAttributeDef(
-            id=0xF000, type=ColorTempPreset, access="rw", is_manufacturer_specific=True
+        color_step = ZCLAttributeDef(
+            id=0xF000, type=t.Bool, access="rw", is_manufacturer_specific=True
         )
-
-    def _update_attribute(self, attrid, value):
-        super()._update_attribute(attrid, value)
-        if attrid == ColorControl.AttributeDefs.color_temperature.id and value is not None:
-            super()._update_attribute(
-                self.AttributeDefs.color_preset.id, _mireds_to_preset(int(value))
-            )
 
     async def write_attributes(self, attributes, manufacturer=None, **kwargs):
         remaining = dict(attributes)
-        preset = remaining.pop("color_preset", remaining.pop(0xF000, None))
-        if preset is not None:
-            mireds = _PRESET_TO_MIREDS[ColorTempPreset(preset)]
-            await self.move_to_color_temp(color_temp_mireds=mireds, transition_time=0)
-            super()._update_attribute(
-                self.AttributeDefs.color_preset.id, ColorTempPreset(preset)
-            )
+        step = remaining.pop("color_step", remaining.pop(0xF000, None))
+        if step is not None:
+            # Any colour command advances one step; the mireds value is irrelevant (the
+            # firmware ignores it and just steps). moveToColorTemp is used so the firmware's
+            # command path fires (a Write Attribute to colorTemperature is read-only/ignored).
+            await self.move_to_color_temp(color_temp_mireds=250, transition_time=0)
+            # Momentary button: just acknowledge the write (no meaningful state to keep).
+            super()._update_attribute(self.AttributeDefs.color_step.id, t.Bool(bool(step)))
         if remaining:
             return await super().write_attributes(
                 remaining, manufacturer=manufacturer, **kwargs
@@ -203,14 +180,14 @@ class CreateFan(CustomCluster, Fan):
         translation_key="fan_speed",
         fallback_name="Fan speed",
     )
-    # EP2 — color temperature as a 3-step select
-    .enum(
-        CreateColorControl.AttributeDefs.color_preset.name,
-        ColorTempPreset,
+    # EP2 — colour: cycle-only, exposed as a momentary "next step" button (each press = one step)
+    .write_attr_button(
+        CreateColorControl.AttributeDefs.color_step.name,
+        1,  # value written on press — irrelevant, the firmware just advances one step
         CreateColorControl.cluster_id,
         endpoint_id=2,
-        translation_key="color_preset",
-        fallback_name="Color preset",
+        translation_key="color_step",
+        fallback_name="Color step (next)",
     )
     # EP3 — timer preset select + remaining-countdown sensor
     .enum(

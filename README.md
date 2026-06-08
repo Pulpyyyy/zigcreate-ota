@@ -9,7 +9,7 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 | Fonction | Contrôles disponibles |
 |---|---|
 | **Ventilateur** | Marche/arrêt · 6 niveaux de vitesse |
-| **Lumière** | Marche/arrêt · Température de couleur (Froid / Neutre / Chaud) |
+| **Lumière** | Marche/arrêt · Température de couleur en **cycle** (cran suivant : Froid→Neutre→Chaud→…) |
 | **Minuterie** | Préréglages `1h` / `2h` / `4h` · Décompte visible en temps réel · Réinitialisation automatique à `off` en fin de décompte |
 | **Son** | Activation / désactivation du bip de confirmation |
 | **Direction** | Mode Été (brassage vers le bas) · Mode Hiver (remontée d'air chaud) |
@@ -25,7 +25,7 @@ Transformez votre ventilateur Tuya en appareil Zigbee natif, pilotable depuis vo
 Toutes les commandes sont disponibles depuis Zigbee2MQTT ou toute box compatible Zigbee :
 
 - **Ventilateur** — marche/arrêt indépendant de la vitesse ; la vitesse peut être réglée de 1 à 6 sans éteindre le ventilateur. La dernière vitesse est mémorisée et restaurée à la prochaine mise en marche.
-- **Lumière** — marche/arrêt avec mémorisation de l'état ; température de couleur en 3 paliers : Froid (~6 500 K), Neutre (~2 700 K), Chaud (~2 000 K).
+- **Lumière** — marche/arrêt avec mémorisation de l'état. **Température de couleur : cycle uniquement** — le matériel ne permet pas de choisir une couleur absolue, on ne peut qu'avancer d'un cran (Froid→Neutre→Chaud→…) comme avec la télécommande. La valeur remontée par le MCU est découplée de la couleur réelle, donc aucun état couleur fiable n'est exposé.
 - **Minuterie** — déclenche l'extinction automatique après 1 h, 2 h ou 4 h. Le décompte restant (en minutes) est visible en temps réel dans l'interface. Le préréglage repasse automatiquement à `off` lorsque le décompte atteint zéro.
 - **Son (bip)** — active ou désactive le bip sonore émis par l'appareil lors de chaque commande.
 - **Direction** — inverse le sens de rotation du ventilateur pour le mode Hiver.
@@ -45,7 +45,7 @@ Il est possible de définir ce que fait chaque appareil au redémarrage après u
 | `toggle` | Inverse l'état précédent |
 | `previous` (défaut lumière) | Restaure l'état avant la coupure |
 
-La température de couleur de la lumière est également restaurée automatiquement. Par défaut, le bip démarre toujours désactivé.
+La température de couleur n'est PAS restaurée (cycle uniquement / découplée — voir ci-dessus). Par défaut, le bip démarre toujours désactivé.
 
 ### Mises à jour sans fil (OTA)
 
