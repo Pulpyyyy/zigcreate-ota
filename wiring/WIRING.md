@@ -95,7 +95,7 @@ Un niveau bas (GND) bref sur ce GPIO provoque un redémarrage software, sans eff
 
 Le firmware intègre la prise en charge d'un capteur **DHT22** ou **DHT11** pour reporter la température et l'humidité ambiantes via Zigbee. Ce capteur est **entièrement optionnel** : sans lui, toutes les autres fonctions restent opérationnelles.
 
-> **DHT11 ou DHT22 ?** Le câblage est identique (même protocole 1 fil) et le firmware **détecte automatiquement** le capteur branché (DHT22, DHT11 ou aucun) — rien à configurer. Au démarrage il sonde les deux familles et verrouille celle qui répond ; si aucun capteur n'est présent, la tâche se contente d'avertir sans perturber le reste. Le DHT22 est plus précis et couvre les températures négatives ; le DHT11 est moins cher mais limité (0–50 °C, ±2 °C, ±5 % HR, résolution 1°).
+> **DHT11 ou DHT22 ?** Le câblage est identique (même protocole 1 fil) et le firmware **détecte automatiquement** le capteur branché (DHT22, DHT11 ou aucun) — rien à configurer. Au démarrage il sonde les deux familles et verrouille celle qui répond ; si aucun capteur n'est présent, la tâche se contente d'avertir sans perturber le reste. Le DHT22 est plus précis et couvre les températures négatives ; le DHT11 est moins cher mais limité (0–50 °C, ±2 °C, ±5 % d'humidité relative, résolution 1°).
 
 ### Module PCB recommandé
 
@@ -120,10 +120,20 @@ Le firmware intègre la prise en charge d'un capteur **DHT22** ou **DHT11** pour
 
 Une fois câblé, le firmware reporte automatiquement la température et l'humidité toutes les 60 secondes :
 
-| Entité | Cluster ZCL | Précision |
+| Entité | Cluster ZCL | Résolution reportée |
 |---|---|---|
 | `temperature` | TemperatureMeasurement (0x0402) | 0,1 °C |
 | `humidity` | RelativeHumidity (0x0405) | 0,1 % |
+
+> La **résolution reportée** (0,1°) est celle du cluster Zigbee, pas la précision réelle du capteur, qui dépend du modèle :
+
+| Caractéristique | DHT22 (AM2302) | DHT11 |
+|---|---|---|
+| Plage température | −40 à +80 °C | 0 à +50 °C |
+| Précision température | ±0,5 °C | ±2 °C |
+| Plage humidité relative | 0 à 100 % | 20 à 90 % |
+| Précision humidité relative | ±2 à ±5 % | ±5 % |
+| Résolution capteur | 0,1° | 1° |
 
 > Sous **Zigbee2MQTT**, ces entités sont **désactivées par défaut** — les activer manuellement dans l'interface HA si souhaité.
 > Sous **ZHA**, les entités température et humidité sont créées actives.
