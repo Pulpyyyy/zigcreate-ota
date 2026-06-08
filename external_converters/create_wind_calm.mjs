@@ -12,7 +12,7 @@ const fz_fan_mode = {
         if (msg.data.hasOwnProperty('fanMode')) {
             const mode = msg.data['fanMode'];
             if (mode === 0) return {fan: 'OFF'};
-            return {fan: 'ON', fan_mode: String(mode)};
+            return {fan: 'ON', fan_mode: mode};
         }
     },
 };
@@ -43,13 +43,13 @@ const tz_fan = {
             const cur = parseInt(meta.state.fan_mode) || 1;
             const speed = Math.max(1, Math.min(6, cur));
             await ep1.write('hvacFanCtrl', {fanMode: speed});
-            return {state: {fan: 'ON', fan_mode: String(speed)}};
+            return {state: {fan: 'ON', fan_mode: speed}};
         }
         if (key === 'fan_mode') {
             const speed = Math.max(1, Math.min(6, parseInt(value)));
             if (isNaN(speed)) return;
             await ep1.write('hvacFanCtrl', {fanMode: speed});
-            return {state: {fan: 'ON', fan_mode: String(speed)}};
+            return {state: {fan: 'ON', fan_mode: speed}};
         }
     },
     convertGet: async (entity, key, meta) => {
@@ -302,6 +302,27 @@ const tz_temp_hum = {
     },
 };
 
+// EP1 — HA `fan` domain entity: on/off (property 'fan') + speed 1-6.
+// IMPORTANT: do NOT use withModes()/an enum here. Z2M's HA fan discovery treats
+// numeric mode values as percentage speeds and REQUIRES at least one preset among
+// on/auto/smart (`assert(presets.length !== 0)` in homeassistant.ts) — with pure
+// 1-6 speeds that assertion throws and crashes the *entire* HA discovery extension
+// (no entities published at all). withSpeed() registers a native speed instead, no
+// preset needed. Rename its feature property 'speed' → 'fan_mode' so fz/tz and the
+// firmware are untouched. The genOnOff cluster on EP1 stays for direct binding.
+const fanExpose = exposes.presets.fan()
+    .withState('fan', ea.ALL)
+    .withSpeed(1, 6)
+    .withDescription('Fan: on/off + speed 1-6');
+fanExpose.features.find((f) => f.name === 'speed').withProperty('fan_mode');
+
+// EP2 — HA `light` entity (on/off). The Light composite defaults its state
+// property to 'state'; rename it back to 'light' to keep the existing property
+// name (fz_light_onoff/tz_light_onoff stay unchanged). The genOnOff cluster on
+// EP2 remains for direct binding; color temperature stays a separate select.
+const lightExpose = exposes.presets.light().withDescription('Light on/off');
+lightExpose.features.find((f) => f.name === 'state').withProperty('light');
+
 export default {
     fingerprint: [{modelID: 'WIND-CALM', manufacturerName: 'CREATE'}],
     model:       'WIND-CALM',
@@ -313,12 +334,10 @@ export default {
     toZigbee:   [tz_light_onoff, tz_fan, tz_light_color_temp, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_temp_hum, tz_debug_firmware],
 
     exposes: [
-        exposes.binary('fan', ea.ALL, 'ON', 'OFF')
-            .withDescription('Fan on/off'),
-        exposes.enum('fan_mode', ea.ALL, ['1', '2', '3', '4', '5', '6'])
-            .withDescription('Fan speed (1-6); setting any speed turns the fan on'),
-        exposes.binary('light', ea.ALL, 'ON', 'OFF')
-            .withDescription('Light on/off'),
+        // HA `fan` domain entity (on/off + speed). Built above with withSpeed.
+        fanExpose,
+        // HA `light` domain entity (on/off). Property renamed to 'light' above.
+        lightExpose,
         exposes.enum('light_color_temp', ea.ALL, ['cool', 'neutral', 'warm'])
             .withDescription('Color temperature (cool=6500K, neutral=2700K, warm=2000K)'),
         exposes.enum('timer_preset', ea.STATE_SET, ['off', '1h', '2h', '4h'])
