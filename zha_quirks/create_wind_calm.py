@@ -34,7 +34,7 @@ from zigpy.quirks import CustomCluster
 from zigpy.quirks.v2 import QuirkBuilder
 from zigpy.zcl import foundation
 from zigpy.zcl.clusters.hvac import Fan
-from zigpy.zcl.clusters.general import LevelControl
+from zigpy.zcl.clusters.general import LevelControl, OnOff
 from zigpy.zcl.clusters.lighting import ColorControl
 from zigpy.zcl.foundation import ZCLAttributeDef
 
@@ -59,6 +59,13 @@ class CreateColorControl(CustomCluster, ColorControl):
         remaining = dict(attributes)
         step = remaining.pop("color_step", remaining.pop(0xF000, None))
         if step is not None:
+            # Mirror the physical remote (and the Z2M converter): a colour step also turns the
+            # light ON, so stepping a switched-off lamp lights it. Only send `on` when it isn't
+            # already on, to avoid a redundant command (extra MCU beep). OnOff is on the same
+            # endpoint (EP2). `get` reads the attribute cache; None (unknown) → send on.
+            on_off = self.endpoint.on_off
+            if on_off.get(OnOff.AttributeDefs.on_off.name) is not True:
+                await on_off.on()
             # Any colour command advances one step; the mireds value is irrelevant (the
             # firmware ignores it and just steps). moveToColorTemp is used so the firmware's
             # command path fires (a Write Attribute to colorTemperature is read-only/ignored).
