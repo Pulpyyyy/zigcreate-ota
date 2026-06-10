@@ -102,6 +102,10 @@ Le firmware intègre la prise en charge d'un capteur **DHT22** ou **DHT11** pour
 >
 > Le capteur nu (4 broches) nécessite l'ajout d'une résistance de 4,7 kΩ à 10 kΩ entre VCC et DATA, et d'un condensateur 100 nF entre VCC et GND.
 
+Module DHT22 sur PCB (3 broches) tout intégré, cable direct :
+
+![Module DHT22 sur PCB](wiring/dht22.png)
+
 ### Connexions
 
 | Signal | Module capteur | ESP32-H2 | Remarque |
