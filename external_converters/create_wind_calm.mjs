@@ -34,14 +34,49 @@ const fz_fan_onoff = {
     },
 };
 
-const tz_fan = {
-    // HA's native-speed fan commands on/off via the bare `state` key and the speed (1-6) via
-    // `speed` (Z2M hardcodes both — see homeassistant.ts fan/nativeSpeed). `fan`/`fan_mode`
-    // kept for backward-compat / direct z2m control. The bare `state` does NOT clash with the
-    // light: the light is on the 'lamp' endpoint (state_lamp) and tz_light_onoff is gated to
-    // endpoints:['lamp'], so this converter only ever gets the fan's non-endpoint `state`.
-    key: ['state', 'speed', 'fan', 'fan_mode'],
+// EP2 — Light on/off (genOnOff only — no genLevelCtrl on EP2)
+const fz_light_onoff = {
+    cluster: 'genOnOff',
+    type: ['attributeReport', 'readResponse'],
+    convert: (model, msg, publish, options, meta) => {
+        if (msg.endpoint.ID !== 2) return;
+        if (msg.data.hasOwnProperty('onOff')) {
+            return {state_lamp: msg.data['onOff'] ? 'ON' : 'OFF'};
+        }
+    },
+};
+
+// ---------- UNIFIED toZigbee converter for state/speed/brightness ----------
+// Why unified: with multiEndpoint: true, if TWO converters both claim key 'state' and one
+// has `endpoints: [...]`, Z2M's resolver rejects converters without an endpoint match for
+// commands arriving on the base topic (no endpoint context). Merging into a single converter
+// with NO `endpoints` restriction avoids this entirely. Disambiguation is done inside
+// convertSet by checking which endpoint the resolved `entity` belongs to.
+const tz_fan_and_light = {
+    key: ['state', 'speed', 'brightness', 'fan', 'fan_mode'],
     convertSet: async (entity, key, value, meta) => {
+        // `entity` is the resolved endpoint:
+        //   • commands on .../lamp/set  → entity = EP2 (light)
+        //   • commands on .../set       → entity = EP1 (fan, default)
+        // Additionally, 'brightness' is ALWAYS the light, and 'fan'/'fan_mode'/'speed'
+        // are ALWAYS the fan, regardless of endpoint.
+        const isLight = key === 'brightness' || (key === 'state' && entity.ID === 2);
+
+        if (isLight) {
+            // --- Light (EP2) ---
+            const ep2 = meta.device.getEndpoint(2);
+            if (key === 'brightness') {
+                // EP2 has no genLevelCtrl (no dimming). Map brightness to on/off.
+                const on = parseInt(value) > 0;
+                await ep2.command('genOnOff', on ? 'on' : 'off', {});
+                return {state: {state: on ? 'ON' : 'OFF'}};
+            }
+            const on = String(value).toUpperCase() === 'ON';
+            await ep2.command('genOnOff', on ? 'on' : 'off', {});
+            return {state: {state: on ? 'ON' : 'OFF'}};
+        }
+
+        // --- Fan (EP1) ---
         const ep1 = meta.device.getEndpoint(1);
         if (key === 'state' || key === 'fan') {
             const on = String(value).toUpperCase() === 'ON';
@@ -60,36 +95,11 @@ const tz_fan = {
         return {state: {state: 'ON', fan: 'ON', fan_mode: speed}};
     },
     convertGet: async (entity, key, meta) => {
-        await meta.device.getEndpoint(1).read('hvacFanCtrl', ['fanMode']);
-    },
-};
-
-// EP2 — Light on/off (genOnOff only — no genLevelCtrl on EP2)
-const fz_light_onoff = {
-    cluster: 'genOnOff',
-    type: ['attributeReport', 'readResponse'],
-    convert: (model, msg, publish, options, meta) => {
-        if (msg.endpoint.ID !== 2) return;
-        if (msg.data.hasOwnProperty('onOff')) {
-            // Endpoint-suffixed key 'state_lamp' (NOT bare 'state'): the HA `light` (json schema)
-            // and the speed-`fan` both want the bare `state` key. Keeping the light on its own
-            // 'lamp' endpoint (→ state_lamp, published to the .../lamp subtopic HA reads) is the only
-            // way the two entities stay independent. See `lightExpose` + `endpoint()` below.
-            return {state_lamp: msg.data['onOff'] ? 'ON' : 'OFF'};
+        if (key === 'brightness' || entity.ID === 2) {
+            await meta.device.getEndpoint(2).read('genOnOff', ['onOff']);
+        } else {
+            await meta.device.getEndpoint(1).read('hvacFanCtrl', ['fanMode']);
         }
-    },
-};
-const tz_light_onoff = {
-    key: ['state'],
-    endpoints: ['lamp'],   // match ONLY the 'lamp' (light) endpoint — never the fan's bare `state`
-    convertSet: async (entity, key, value, meta) => {
-        const ep2 = meta.device.getEndpoint(2);
-        const on = String(value).toUpperCase() === 'ON';
-        await ep2.command('genOnOff', on ? 'on' : 'off', {});
-        return {state: {state: on ? 'ON' : 'OFF'}};  // z2m auto-suffixes → state_lamp
-    },
-    convertGet: async (entity, key, meta) => {
-        await meta.device.getEndpoint(2).read('genOnOff', ['onOff']);
     },
 };
 
@@ -337,13 +347,18 @@ const fanExpose = exposes.presets.fan()
     .withDescription('Fan: on/off + speed 1-6');
 fanExpose.features.find((f) => f.name === 'speed').withProperty('fan_mode');
 
-// EP2 — HA `light` entity (on/off only). MUST be on its own endpoint ('lamp'): both this
-// json-schema light and the speed-`fan` are hardcoded by Z2M to the bare `state` key, so
+// EP2 — HA `light` entity (on/off only, no brightness). MUST be on its own endpoint ('lamp'): both
+// the light's on/off and the speed-`fan` are hardcoded by Z2M to the bare `state` key, so
 // without an endpoint they'd share `state` and toggle each other. The endpoint makes the
 // light's on/off `state_lamp` (HA reads/commands it via the .../lamp subtopic) — independent
 // from the fan. HA names the entity '<device> Lamp' by default; rename it in HA if desired
-// (purely cosmetic). The genOnOff cluster on EP2 also stays for direct binding.
-const lightExpose = exposes.presets.light().withEndpoint('lamp').withDescription('Light on/off');
+// (purely cosmetic). The genOnOff cluster on EP2 also stays for direct binding. Colour cycling
+// is controlled via a separate `color_mode` enum (cold/neutral/warm), not a brightness slider.
+const lightExpose = exposes.presets.light()
+    .withEndpoint('lamp')
+    .withDescription('Light on/off');
+// Remove brightness feature to expose only on/off (no percentage slider)
+lightExpose.features = lightExpose.features.filter((f) => f.name !== 'brightness');
 
 export default {
     fingerprint: [{modelID: 'WIND-CALM', manufacturerName: 'CREATE'}],
@@ -353,7 +368,7 @@ export default {
     ota:         true,
 
     fromZigbee: [fz_fan_mode, fz_fan_onoff, fz_light_onoff, fz_timer, fz_beep, fz_direction, fz_power_on_behavior, fz_temperature, fz_humidity, fz_debug_firmware],
-    toZigbee:   [tz_light_onoff, tz_fan, tz_color_step, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_temp_hum, tz_debug_firmware],
+    toZigbee:   [tz_fan_and_light, tz_color_step, tz_timer, tz_beep, tz_direction, tz_power_on_behavior_light, tz_power_on_behavior_beep, tz_temp_hum, tz_debug_firmware],
 
     exposes: [
         // HA `fan` domain entity (on/off + speed). Built above with withSpeed.
@@ -362,9 +377,9 @@ export default {
         lightExpose,
         exposes.binary('color_step', ea.STATE_SET, 'ON', 'OFF')
             .withDescription('Colour temperature — momentary: switch ON to advance ONE step ' +
-                             '(cold→neutral→warm→…); it springs back to OFF automatically. This ' +
-                             'lamp can only cycle — an absolute colour cannot be selected and ' +
-                             'there is no reliable colour state.'),
+                '(cold→neutral→warm→…); it springs back to OFF automatically. This ' +
+                'lamp can only cycle — an absolute colour cannot be selected and ' +
+                'there is no reliable colour state.'),
         exposes.enum('timer_preset', ea.STATE_SET, ['off', '1h', '2h', '4h'])
             .withDescription('Timer setting; auto-resets to OFF when countdown reaches 0'),
         exposes.numeric('timer_countdown', ea.STATE)
@@ -385,8 +400,8 @@ export default {
         exposes.binary('debug_firmware', ea.ALL, 'ON', 'OFF')
             .withCategory('config')
             .withDescription('Swap the installed firmware over OTA: ON = debug build, OFF = release build. ' +
-                             'The device persists the choice, reboots, and pulls the matching image from the other ' +
-                             'OTA channel. For development/diagnostics — not a fan function.'),
+                'The device persists the choice, reboots, and pulls the matching image from the other ' +
+                'OTA channel. For development/diagnostics — not a fan function.'),
     ],
 
     // 'lamp' → EP2: names the light's endpoint so its on/off becomes `state_lamp`, decoupled from
@@ -404,6 +419,16 @@ export default {
         overrideHaDiscoveryPayload: (payload) => {
             if (payload.schema === 'json') {
                 payload.name = null;
+                // This lamp has no dimmer (on/off only). Remove brightness fields so HA
+                // renders a plain on/off toggle instead of a slider. Z2M injects `brightness`
+                // based on the light preset's clusters, regardless of the feature filter above.
+                delete payload.brightness;
+                delete payload.brightness_scale;
+                // Constrain color modes to on/off only — strips any brightness/color_temp
+                // mode that would re-enable the slider in HA's light entity UI.
+                if (Array.isArray(payload.supported_color_modes)) {
+                    payload.supported_color_modes = ['onoff'];
+                }
             }
         },
     },
