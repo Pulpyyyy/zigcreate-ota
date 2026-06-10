@@ -48,8 +48,8 @@ En-tête gauche (haut → bas)   En-tête droit (haut → bas)
 | Masse | — | En-tête gauche, 2e (**GND**) | Commune avec MCU Tuya |
 | LED RGB (WS2812) | GPIO8 | Pad LOG (castellé) | Interne, ne pas câbler |
 | Bouton BOOT / Reset Zigbee | GPIO9 | Pad castellé bas | En fonctionnement normal : maintenir 5 s pour reset usine. Pour le flash : voir [FLASH.md](../flash/FLASH.md) |
-| Reset externe (actif bas) | GPIO2 | En-tête gauche, 7e | Redémarrage software |
-| Capteur T°/HR DATA (optionnel) | GPIO3 | En-tête gauche, 8e | Voir section [Capteur T°/HR](#capteur-de-température--humidité-optionnel) |
+| Reset externe (actif bas) | GPIO2 | En-tête gauche, 6e | Redémarrage software |
+| Capteur T°/HR DATA (optionnel) | GPIO3 | En-tête gauche, 7e | Voir section [Capteur T°/HR](#capteur-de-température--humidité-optionnel) |
 | USB D+ | GPIO27 | Pad castellé bas | Réservé USB, ne pas utiliser |
 | USB D- | GPIO26 | Pad castellé bas | Réservé USB, ne pas utiliser |
 
@@ -84,8 +84,7 @@ Un niveau bas (GND) bref sur ce GPIO provoque un redémarrage software, sans eff
 
 | Carte | GPIO | Broche en-tête |
 |---|---|---|
-| ESP32-H2-Zero | GPIO2 | En-tête gauche, 7e |
-| ESP32-H2 Super Mini | GPIO14 | |
+| ESP32-H2-Zero | GPIO2 | En-tête gauche, 6e |
 
 > Pour un reset usine complet (effacement réseau + préférences), utiliser le bouton BOOT maintenu **5 secondes**.
 
@@ -113,8 +112,7 @@ Le firmware intègre la prise en charge d'un capteur **DHT22** ou **DHT11** pour
 
 | Carte | GPIO DATA capteur | Broche en-tête |
 |---|---|---|
-| ESP32-H2-Zero | GPIO3 | En-tête gauche, 8e |
-| ESP32-H2 Super Mini | GPIO2 | |
+| ESP32-H2-Zero | GPIO3 | En-tête gauche, 7e |
 
 ### Entités Zigbee générées
 
