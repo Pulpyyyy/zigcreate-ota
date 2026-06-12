@@ -24,7 +24,7 @@ Téléchargez ces quatre fichiers :
 |---|---|
 | `bootloader.bin` | Bootloader ESP32-H2 |
 | `partition-table.bin` | Table de partitions |
-| `ota_data_initial.bin` | Indique au bootloader la partition à démarrer |
+| `ota_data_initial.bin` | Indique au bootloader la partition à démarrer (optionel, dev uniquement) |
 | `zigcreate.bin` | Firmware applicatif |
 
 > `zigcreate.ota` est réservé aux mises à jour Zigbee over-the-air — **ne pas utiliser ici**.
