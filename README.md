@@ -103,3 +103,11 @@ Le converter externe expose toutes les entités de l'appareil dans Z2M : ventila
 Le quirk custom permet à ZHA de reconnaître l'appareil et d'exposer les entités natives Home Assistant.
 
 **[→ Guide d'installation ZHA complet](../zha_quirks/README.md)**
+
+---
+
+## Dépannage
+
+En cas de problème en fonctionnement (LED ambre, commandes sans effet, bootloop, capteur DHT muet…), consultez le guide dédié :
+
+**[→ Guide de dépannage](TROUBLESHOOTING.md)**
