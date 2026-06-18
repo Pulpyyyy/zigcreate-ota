@@ -1,35 +1,5 @@
 [
   {
-    "manufacturerCode": 20631,
-    "imageType": 1791,
-    "fileVersion": 2606071339,
-    "fileSize": 555150,
-    "sha512": "18bd430951977c65bba61729b28ad8d43dd71bed68d536018ad9e73ef2a9456b33e38609faac548bbd719480d33e46608721ca0e016e0a5a3fb0999c1eba76b9",
-    "fileName": "zigvindriktning.ota",
-    "force": true,
-    "url": "https://github.com/Pulpyyyy/zigvindriktning-ota/releases/download/v20260607-1339-esp32h2_supermini/zigvindriktning.ota"
-  },
-  {
-    "manufacturerCode": 20631,
-    "imageType": 34559,
-    "fileVersion": 2606071339,
-    "fileSize": 564302,
-    "sha512": "fd0113e2c58f1ae8332c49bb9a21910a1d7b16b001cf48efc02ba8af394138e5f3fce61df1c3739fd4eb38c335c648005f306f0c706b5e9c31058b121ad00d33",
-    "fileName": "zigvindriktning.ota",
-    "force": true,
-    "url": "https://github.com/Pulpyyyy/zigvindriktning-ota/releases/download/v20260607-1339-esp32h2_supermini-debug/zigvindriktning.ota"
-  },
-  {
-    "manufacturerCode": 20630,
-    "imageType": 53445,
-    "fileVersion": 2606091244,
-    "fileSize": 588190,
-    "sha512": "e02d7aaddbe09841c5d56be8a508e4c76fcecde9d1364ec69db4e26b0bf26e4bc0e402ed58dd92c1523134c5f6f3adb450817c563b1042a8a720166bf1f9476a",
-    "fileName": "zigcreate.ota",
-    "force": true,
-    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260609-1244-esp32h2_zero-debug/zigcreate.ota"
-  },
-  {
     "manufacturerCode": 20630,
     "imageType": 20677,
     "fileVersion": 2606091244,
@@ -38,5 +8,14 @@
     "fileName": "zigcreate.ota",
     "force": true,
     "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260609-1244-esp32h2_zero/zigcreate.ota"
+  },
+  {
+    "manufacturerCode": 20630,
+    "imageType": 53445,
+    "fileVersion": 2606181937,
+    "fileSize": 588190,
+    "sha512": "dbb7981588bb25434ef3574034cd519932375b22a0b704f3b5b6e0e81d021005c7e282393bc290069a72f2d38006a777a5c6466d514247f1b878b1ff7967959f",
+    "fileName": "zigcreate.ota",
+    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260618-1937-esp32h2_zero-debug/zigcreate.ota"
   }
 ]
