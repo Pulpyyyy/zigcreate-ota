@@ -1,20 +1,20 @@
 [
   {
     "manufacturerCode": 20630,
-    "imageType": 53445,
-    "fileVersion": 2606182109,
-    "fileSize": 589422,
-    "sha512": "cf273cf07b4535224c9da9aefd82ccf9f4fd57baada95ef6bbc545c8e55efa527b0cbe1a01761c5bd04faa54ecce232b55df5bdac281e3b795fb7894d5157e26",
-    "fileName": "zigcreate.ota",
-    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260618-2109-esp32h2_zero-debug/zigcreate.ota"
-  },
-  {
-    "manufacturerCode": 20630,
     "imageType": 20677,
     "fileVersion": 2606182109,
     "fileSize": 588014,
     "sha512": "07664f2a748910bab3bf7c3e909643c9756dd3be18a4c1a2663b26ea5dbdea7a3f94806e919d05f4b85fd16021f4de604add7de6ed809396f6580b7be8e8a23d",
     "fileName": "zigcreate.ota",
     "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260618-2109-esp32h2_zero/zigcreate.ota"
+  },
+  {
+    "manufacturerCode": 20630,
+    "imageType": 53445,
+    "fileVersion": 2606190635,
+    "fileSize": 590078,
+    "sha512": "b650f989691f9a46c375cde6fe75ff062b508452ef16ab7e3af3ce09b2385ac8751f0ad90e55b92cbd7cdeed0c559f9c03bbe3c67682afa2b70c50292b08fe7f",
+    "fileName": "zigcreate.ota",
+    "url": "https://github.com/Pulpyyyy/zigcreate-ota/releases/download/v20260619-0635-esp32h2_zero-debug/zigcreate.ota"
   }
 ]
