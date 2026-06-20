@@ -334,16 +334,28 @@ const tz_temp_hum = {
 const fanExpose = exposes.presets.fan()
     .withState('fan', ea.ALL)
     .withSpeed(1, 6)
-    .withDescription('Fan: on/off + speed 1-6');
+    .withDescription('Fan: on/off + speed 1-6 + direction');
 fanExpose.features.find((f) => f.name === 'speed').withProperty('fan_mode');
+// Embed direction inside the fan composite so HA's fan entity shows it natively
+// in the fan card (no separate switch needed). The tz_direction converter still
+// handles the actual Zigbee command on EP5.
+fanExpose.features.push(
+    exposes.enum('direction', ea.ALL, ['forward', 'reverse'])
+        .withDescription('Fan rotation direction')
+);
 
-// EP2 — HA `light` entity (on/off only). MUST be on its own endpoint ('lamp'): both this
-// json-schema light and the speed-`fan` are hardcoded by Z2M to the bare `state` key, so
+// EP2 — HA `light` entity (on/off only, no brightness). MUST be on its own endpoint ('lamp'): both
+// the light's on/off and the speed-`fan` are hardcoded by Z2M to the bare `state` key, so
 // without an endpoint they'd share `state` and toggle each other. The endpoint makes the
 // light's on/off `state_lamp` (HA reads/commands it via the .../lamp subtopic) — independent
 // from the fan. HA names the entity '<device> Lamp' by default; rename it in HA if desired
-// (purely cosmetic). The genOnOff cluster on EP2 also stays for direct binding.
-const lightExpose = exposes.presets.light().withEndpoint('lamp').withDescription('Light on/off');
+// (purely cosmetic). The genOnOff cluster on EP2 also stays for direct binding. Colour cycling
+// is controlled via a separate `color_mode` enum (cold/neutral/warm), not a brightness slider.
+const lightExpose = exposes.presets.light()
+    .withEndpoint('lamp')
+    .withDescription('Light on/off');
+// Remove brightness feature to expose only on/off (no percentage slider)
+lightExpose.features = lightExpose.features.filter((f) => f.name !== 'brightness');
 
 export default {
     fingerprint: [{modelID: 'WIND-CALM', manufacturerName: 'CREATE'}],
@@ -372,8 +384,7 @@ export default {
             .withDescription('Remaining countdown (min)'),
         exposes.binary('beep', ea.ALL, 'ON', 'OFF')
             .withDescription('Audible beep'),
-        exposes.enum('direction', ea.ALL, ['forward', 'reverse'])
-            .withDescription('Fan rotation direction'),
+        // direction is now inside fanExpose (fan card in HA) — no standalone entity needed
         exposes.enum('power_on_behavior_light', ea.ALL, ['off', 'on', 'toggle', 'previous'])
             .withDescription('Light power-on behavior'),
         exposes.enum('power_on_behavior_beep', ea.ALL, ['off', 'on', 'toggle', 'previous'])
@@ -403,7 +414,27 @@ export default {
         // name → clean `light.<device>`, mirroring the fan's `fan.<device>`.
         overrideHaDiscoveryPayload: (payload) => {
             if (payload.schema === 'json') {
+                // Light entity: strip brightness/dimmer, expose plain on/off toggle only.
                 payload.name = null;
+                delete payload.brightness;
+                delete payload.brightness_scale;
+                // Constrain color modes to on/off only — strips any brightness/color_temp
+                // mode that would re-enable the slider in HA's light entity UI.
+                if (Array.isArray(payload.supported_color_modes)) {
+                    payload.supported_color_modes = ['onoff'];
+                }
+            }
+            // Fan entity: inject direction support so HA renders the direction toggle
+            // natively inside the fan card (forward/reverse). Detected via speed_range_min
+            // which is only present on the fan discovery payload.
+            // IMPORTANT: direction_command_topic must be the BASE set topic (state_topic + '/set'),
+            // NOT payload.command_topic which points to .../set/state — publishing direction
+            // there makes Z2M interpret it as key="state" value={"direction":"..."} → fan off!
+            if (payload.speed_range_min !== undefined && !payload.direction_state_topic) {
+                payload.direction_state_topic = payload.state_topic;
+                payload.direction_command_topic = payload.state_topic + '/set';
+                payload.direction_value_template = '{{ value_json.direction }}';
+                payload.direction_command_template = '{"direction": "{{ value }}"}';
             }
         },
     },
@@ -415,14 +446,17 @@ export default {
         const ep5 = device.getEndpoint(5);
 
         // EP1: fan mode (FanControl cluster — no configureReporting, cluster doesn't support it)
-        // plus genOnOff (0x0006) so the fan can be controlled/bound via plain on/off.
-        await reporting.bind(ep1, coordinatorEndpoint, ['hvacFanCtrl', 'genOnOff']);
+        // plus genOnOff (0x0006) and genLevelCtrl (0x0008) so wall switches and dimmers
+        // bound to EP1 can drive on/off and speed (level 1-254 → speed 1-6).
+        await reporting.bind(ep1, coordinatorEndpoint, ['hvacFanCtrl', 'genOnOff', 'genLevelCtrl']);
         await reporting.onOff(ep1);
+        await reporting.brightness(ep1);
 
-        // EP2: light on/off + color temp
-        await reporting.bind(ep2, coordinatorEndpoint, ['genOnOff', 'lightingColorCtrl']);
+        // EP2: light on/off only. lightingColorCtrl intentionally NOT bound/reported here:
+        // the MCU's color_temp is echo-only (unreliable), and color_step uses a ZCL command
+        // (moveToColorTemp) that doesn't need a bind. Skipping avoids useless periodic reports.
+        await reporting.bind(ep2, coordinatorEndpoint, ['genOnOff']);
         await reporting.onOff(ep2);
-        await reporting.colorTemperature(ep2);
 
         // EP3: timer (genLevelCtrl)
         const ep3 = device.getEndpoint(3);
@@ -448,8 +482,8 @@ export default {
         // Read current states so Z2M cache is populated immediately after configure
         await ep1.read('hvacFanCtrl', ['fanMode']);
         await ep1.read('genOnOff', ['onOff']);
+        await ep1.read('genLevelCtrl', ['currentLevel']);
         await ep2.read('genOnOff', ['onOff']);
-        await ep2.read('lightingColorCtrl', ['colorTemperature']);
         await ep4.read('genOnOff', ['onOff']);
         await ep5.read('genOnOff', ['onOff']);
         await ep3.read('genLevelCtrl', ['currentLevel']);
