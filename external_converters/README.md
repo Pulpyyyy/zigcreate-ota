@@ -6,39 +6,44 @@
 
 ## 1. Copier le converter
 
-Copiez le fichier `create_wind_calm.mjs` dans le dossier `data/external_converters/` de votre installation Zigbee2MQTT (créez le dossier s'il n'existe pas).
+L'emplacement du dossier `external_converters/` dépend de votre installation Z2M :
 
-```
-data/
-└── external_converters/
-    └── create_wind_calm.mjs
-```
+| Installation | Chemin |
+|---|---|
+| **Add-on HA** | même dossier que `configuration.yaml` (ex. `/config/zigbee2mqtt/external_converters/`) |
+| **LXC / Docker** | `data/external_converters/` dans le répertoire de données Z2M |
+
+Créez le dossier s'il n'existe pas et copiez-y `create_wind_calm.mjs`.
 
 ---
 
-## 2. Déclarer le converter dans configuration.yaml
+## 2. Déclarer le converter
+
+### Option A — via l'interface Z2M
+
+Dans Z2M → **Paramètres** → **External converters**, ajoutez `create_wind_calm.mjs` directement depuis l'UI.
+
+### Option B — via `configuration.yaml`
+
+Ajoutez dans `configuration.yaml` :
 
 ```yaml
+advanced:
+  enable_external_js: true
+
 external_converters:
   - create_wind_calm.mjs
 ```
 
 Redémarrez Zigbee2MQTT. L'appareil **WIND-CALM (CREATE)** sera reconnu automatiquement lors du prochain appairage.
 
-![Converter déclaré dans configuration.yaml](img/z2m_config_converter.png)
+![Converter déclaré dans configuration.yaml](https://raw.githubusercontent.com/Pulpyyyy/zigcreate-ota/main/img/z2m_config_converter.png)
 
 ---
 
 ## 3. Ajouter l'icône de l'appareil
 
-Copiez le fichier `device_icons/windcalm.png` dans le dossier `data/images/devices/` de votre installation Zigbee2MQTT (créez le dossier s'il n'existe pas).
-
-```
-data/
-└── images/
-    └── devices/
-        └── windcalm.png
-```
+Copiez le fichier `device_icons/windcalm.png` dans le dossier `images/devices/` au même niveau que `configuration.yaml` (créez le dossier s'il n'existe pas).
 
 Ajoutez ensuite l'entrée dans votre `configuration.yaml` :
 
@@ -51,7 +56,7 @@ devices:
 
 > Remplacez `0x<ieee_address>` par l'adresse IEEE réelle de votre appareil, visible dans l'interface Zigbee2MQTT après appairage.
 
-![Appareil avec icône dans la liste des appareils Z2M](img/z2m_device_icon.png)
+![Appareil avec icône dans la liste des appareils Z2M](https://raw.githubusercontent.com/Pulpyyyy/zigcreate-ota/main/img/z2m_device_icon.png)
 
 ---
 
@@ -64,7 +69,7 @@ ota:
 
 Redémarrez Zigbee2MQTT. Les mises à jour firmware seront proposées automatiquement.
 
-![Mise à jour OTA disponible dans Z2M](img/z2m_ota_update.png)
+![Mise à jour OTA disponible dans Z2M](https://raw.githubusercontent.com/Pulpyyyy/zigcreate-ota/main/img/z2m_ota_update.png)
 
 ---
 
@@ -73,8 +78,6 @@ Redémarrez Zigbee2MQTT. Les mises à jour firmware seront proposées automatiqu
 Activez le mode appairage dans Zigbee2MQTT, puis mettez le module sous tension (ou maintenez BOOT 5 s pour réinitialiser).
 
 La LED clignote en **cyan** pendant la recherche de réseau, puis effectue **3 flashes verts** à la réussite.
-
-![Appareil WIND-CALM détecté lors de l'appairage](img/z2m_pairing.png)
 
 ---
 
@@ -96,8 +99,9 @@ La LED clignote en **cyan** pendant la recherche de réseau, puis effectue **3 f
 | `humidity` | Capteur | Humidité relative (%) — **désactivée par défaut** · requiert un capteur DHT11/DHT22 |
 | `debug_firmware` | Interrupteur (config) | Bascule OTA du firmware : `ON` = build debug, `OFF` = build release. L'appareil persiste le choix, redémarre et télécharge l'image du canal correspondant. Outil de maintenance/dev. |
 
+![Toutes les entités dans l'interface Z2M](https://raw.githubusercontent.com/Pulpyyyy/zigcreate-ota/main/img/z2m_entities.png)
+
 > Les entités `temperature` et `humidity` nécessitent un capteur DHT11/DHT22 câblé sur le module (voir [câblage](../docs/wiring/WIRING.md#capteur-de-température--humidité-optionnel)).
 >
 > L'interrupteur `debug_firmware` permet de passer un appareil déployé du firmware release au firmware debug (et inversement) **entièrement par OTA**, sans repasser par l'USB. Les deux canaux (release / debug) sont publiés automatiquement par la CI ; basculer l'interrupteur fait que l'appareil réclame l'image de l'autre canal au prochain cycle OTA.
 
-![Toutes les entités dans l'interface Z2M](img/z2m_entities.png)
